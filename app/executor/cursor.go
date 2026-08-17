@@ -87,11 +87,22 @@ func cursorModelSlug(model, effort string) string {
 	if effort == "" {
 		return model
 	}
-	suffix := "-" + effort
-	if strings.HasSuffix(model, suffix) {
+	if cursorSlugHasEffort(model) {
 		return model
 	}
-	return model + suffix
+	return model + "-" + effort
+}
+
+// cursorSlugHasEffort reports whether a catalog id already carries an effort token, so
+// `cursor-grok-4.6-high-fast` plus a profile `:high` is not rewritten as `...-high-fast-high`.
+func cursorSlugHasEffort(model string) bool {
+	for _, part := range strings.Split(model, "-") {
+		switch part {
+		case "low", "medium", "high", "xhigh", "max":
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Cursor) parseStream(ctx context.Context, r io.Reader, sink EventSink) Result {

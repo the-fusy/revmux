@@ -192,6 +192,9 @@ func (p *Profile) Stage(set *Set, name string) (*Stage, error) {
 	if over, ok := p.stages[name]; ok {
 		res = over.or(st.runner).or(p.runner)
 	}
+	if err := res.check(); err != nil {
+		return nil, fmt.Errorf("profile %s: stage %s: %w", p.Name, name, err)
+	}
 
 	out := *st
 	out.Executor, out.Model, out.Effort = res.Executor, res.Model, res.Effort
@@ -316,6 +319,9 @@ func parseProfile(name string, meta, body []byte) (*Profile, error) {
 	if base.Executor == "" {
 		base.Executor = executorClaude
 	}
+	if err := base.check(); err != nil {
+		return nil, fmt.Errorf("profile %s: %w", name, err)
+	}
 
 	p := &Profile{doc: doc{Description: fm.Description, Body: text}, Name: name, runner: base}
 	p.agents = make([]AgentSpec, 0, len(fm.Agents))
@@ -325,6 +331,9 @@ func parseProfile(name string, meta, body []byte) (*Profile, error) {
 			return nil, fmt.Errorf("profile %s: agent %s: %w", name, a.Name, agentErr)
 		}
 		run = run.or(base)
+		if err := run.check(); err != nil {
+			return nil, fmt.Errorf("profile %s: agent %s: %w", name, a.Name, err)
+		}
 		p.agents = append(p.agents, AgentSpec{Name: a.Name, Lenses: a.Lenses, ColorName: a.Color,
 			Executor: run.Executor, Model: run.Model, Effort: run.Effort})
 	}
@@ -341,6 +350,9 @@ func parseProfile(name string, meta, body []byte) (*Profile, error) {
 			return nil, fmt.Errorf("profile %s: stage %s: empty runner, want %s",
 				name, stage, "<binary>[/<model>][:<effort>]")
 		}
+		if err := run.check(); err != nil {
+			return nil, fmt.Errorf("profile %s: stage %s: %w", name, stage, err)
+		}
 		p.stages[stage] = run
 	}
 	return p, nil
@@ -355,6 +367,9 @@ func parseStage(name string, meta, body []byte) (*Stage, error) {
 
 	run, err := parseRunner(fm.Model)
 	if err != nil {
+		return nil, fmt.Errorf("stage %s: %w", name, err)
+	}
+	if err := run.check(); err != nil {
 		return nil, fmt.Errorf("stage %s: %w", name, err)
 	}
 	st := &Stage{doc: doc{Description: fm.Description, Body: text}, Name: name, runner: run,

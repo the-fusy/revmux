@@ -18,8 +18,12 @@ import (
 )
 
 // executorCodex names the one roster executor whose output is prose rather than stream-json, so its
-// verbatim tee gets a different extension.
-const executorCodex = "codex"
+// verbatim tee gets a different extension. executorCursor is the third binary; archivedPrompt
+// needs it so a cursor prompt is not stored as Claude's narration contract.
+const (
+	executorCodex  = "codex"
+	executorCursor = "cursor"
+)
 
 // maxAttempts is one launch plus one retry. A second failure degrades the source and the run
 // continues, because one flaky agent must not waste every other agent's work.

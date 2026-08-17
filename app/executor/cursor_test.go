@@ -53,17 +53,29 @@ func TestCursor_args(t *testing.T) {
 
 func TestCursor_args_modelAlreadyHasEffort(t *testing.T) {
 	path := writeFixture(t, cursorCapture(t))
-	runner := fakeRunner("emit", path)
-	c := executor.NewCursor(runner, executor.Opts{})
 
-	_, err := c.Run(context.Background(), executor.Request{
-		Prompt: "x", Model: "cursor-grok-4.6-high", Effort: "high",
-	}, discardSink())
-	require.NoError(t, err)
-
-	args := runner.CommandCalls()[0].Args
-	assert.Contains(t, args, "cursor-grok-4.6-high")
-	assert.NotContains(t, args, "cursor-grok-4.6-high-high")
+	tests := []struct {
+		name, model, effort, want string
+	}{
+		{"stem plus effort", "cursor-grok-4.6", "high", "cursor-grok-4.6-high"},
+		{"already ends in effort", "cursor-grok-4.6-high", "high", "cursor-grok-4.6-high"},
+		{"fast suffix after effort", "cursor-grok-4.6-high-fast", "high", "cursor-grok-4.6-high-fast"},
+		{"xhigh slug plus inherited high", "cursor-grok-4.6-xhigh", "high", "cursor-grok-4.6-xhigh"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runner := fakeRunner("emit", path)
+			c := executor.NewCursor(runner, executor.Opts{})
+			_, err := c.Run(context.Background(), executor.Request{
+				Prompt: "x", Model: tt.model, Effort: tt.effort,
+			}, discardSink())
+			require.NoError(t, err)
+			args := runner.CommandCalls()[0].Args
+			assert.Contains(t, args, tt.want)
+			assert.NotContains(t, args, tt.want+"-"+tt.effort)
+			assert.NotContains(t, args, tt.want+"-high")
+		})
+	}
 }
 
 func TestCursor_args_optionalFlagsOmitted(t *testing.T) {

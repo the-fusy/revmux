@@ -50,13 +50,17 @@ func answered(raw json.RawMessage, key string) bool {
 }
 
 // archivedPrompt is the prompt the process actually receives, which is the only version worth storing.
-// Each executor appends something of its own — codex its output contract, claude its narration contract
-// — so a prompt archived as composed describes a review that did not happen.
+// Each executor appends something of its own — cursor and codex an output contract, claude a
+// narration contract — so a prompt archived as composed describes a review that did not happen.
 func archivedPrompt(exec, text string, schema json.RawMessage) string {
-	if exec != executorCodex {
+	switch exec {
+	case executorCodex:
+		return text + executor.CodexOutputContract(schema)
+	case executorCursor:
+		return text + executor.CursorOutputContract(schema)
+	default:
 		return text + executor.ClaudeNarrationContract(schema)
 	}
-	return text + executor.CodexOutputContract(schema)
 }
 
 // Runner runs one supervised process. It is declared here, by the consumer, and exported only so

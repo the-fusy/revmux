@@ -264,6 +264,25 @@ func TestPipeline_Run_archiveFailures(t *testing.T) {
 	})
 }
 
+func TestArchivedPrompt_byExecutor(t *testing.T) {
+	schema := json.RawMessage(`{"type":"object"}`)
+	text := "review this"
+
+	t.Run("cursor stores the JSON contract it appends at run time", func(t *testing.T) {
+		got := archivedPrompt(executorCursor, text, schema)
+		assert.Equal(t, text+executor.CursorOutputContract(schema), got)
+		assert.NotContains(t, got, "As you work, narrate")
+	})
+	t.Run("codex stores its output contract", func(t *testing.T) {
+		got := archivedPrompt(executorCodex, text, schema)
+		assert.Equal(t, text+executor.CodexOutputContract(schema), got)
+	})
+	t.Run("anything else stores Claude narration", func(t *testing.T) {
+		got := archivedPrompt("claude", text, schema)
+		assert.Equal(t, text+executor.ClaudeNarrationContract(schema), got)
+	})
+}
+
 func TestPipeline_emit(t *testing.T) {
 	t.Run("a dropped event is still archived", func(t *testing.T) {
 		h := newHarness(t)
