@@ -40,7 +40,7 @@ func TestCursor_args(t *testing.T) {
 		"--output-format", "stream-json",
 		"--stream-partial-output",
 		"--mode", "ask",
-		"--sandbox", "enabled",
+		"--sandbox", "disabled",
 		"--trust",
 		"--model", "cursor-grok-4.6-high",
 		"--workspace", workdir,

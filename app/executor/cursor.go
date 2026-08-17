@@ -48,13 +48,16 @@ func CursorOutputContract(schema json.RawMessage) string {
 }
 
 func (c *Cursor) args(req Request) []string {
-	// ask + sandbox + no --force: the CLI's --print path otherwise has write and shell.
+	// ask + no --force: --print otherwise has write and shell. Sandbox is off on purpose —
+	// enabled it also blocks outbound network, and the reviewer has to fetch docs and query
+	// live data. Write safety is ask mode, not the sandbox. The flag is explicit so a user
+	// config cannot turn the sandbox back on.
 	argv := []string{
 		"--print",
 		"--output-format", "stream-json",
 		"--stream-partial-output",
 		"--mode", "ask",
-		"--sandbox", "enabled",
+		"--sandbox", "disabled",
 		"--trust",
 	}
 	if slug := cursorModelSlug(req.Model, req.Effort); slug != "" {
