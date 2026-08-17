@@ -241,7 +241,7 @@ func cursorToolProgress(raw json.RawMessage) string {
 		return ""
 	}
 	for k, v := range m {
-		if k == "hookAdditionalContexts" {
+		if !strings.HasSuffix(k, "ToolCall") {
 			continue
 		}
 		name := strings.TrimSuffix(k, "ToolCall")

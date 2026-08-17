@@ -350,9 +350,6 @@ func parseProfile(name string, meta, body []byte) (*Profile, error) {
 			return nil, fmt.Errorf("profile %s: stage %s: empty runner, want %s",
 				name, stage, "<binary>[/<model>][:<effort>]")
 		}
-		if err := run.check(); err != nil {
-			return nil, fmt.Errorf("profile %s: stage %s: %w", name, stage, err)
-		}
 		p.stages[stage] = run
 	}
 	return p, nil
@@ -367,9 +364,6 @@ func parseStage(name string, meta, body []byte) (*Stage, error) {
 
 	run, err := parseRunner(fm.Model)
 	if err != nil {
-		return nil, fmt.Errorf("stage %s: %w", name, err)
-	}
-	if err := run.check(); err != nil {
 		return nil, fmt.Errorf("stage %s: %w", name, err)
 	}
 	st := &Stage{doc: doc{Description: fm.Description, Body: text}, Name: name, runner: run,

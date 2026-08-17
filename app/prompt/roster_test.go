@@ -235,6 +235,52 @@ stages:
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), `unknown stage "nosuch"`)
 	})
+
+	// cursor:high is the same omit-the-model pattern as synthesis: codex — or() fills the model
+	// from the profile, and check() sees the resolved runner
+	t.Run("a cursor:high stage override inherits the profile's model", func(t *testing.T) {
+		set, p := loadProfile(t, `model: cursor/cursor-grok-4.6:medium
+agents:
+  - {name: a, lenses: [bugs]}
+stages:
+  verify: cursor:high
+`)
+		st, err := p.Stage(set, "verify")
+		require.NoError(t, err)
+		assert.Equal(t, "cursor", st.Executor)
+		assert.Equal(t, "cursor-grok-4.6", st.Model)
+		assert.Equal(t, "high", st.Effort)
+	})
+
+	t.Run("a stage file naming cursor:high inherits the profile's model", func(t *testing.T) {
+		project := writeTree(t, t.TempDir(), map[string]string{
+			"prompts/verify.md": "---\ndescription: d\nmodel: cursor:high\n---\nbody",
+			"prompts/profiles/custom.md": "---\nmodel: cursor/cursor-grok-4.6:medium\n" +
+				"agents:\n  - {name: a, lenses: [bugs]}\n---\nbody",
+		})
+		set, err := Load(LoadOpts{ProjectDir: project})
+		require.NoError(t, err)
+		p, err := set.Profile("custom")
+		require.NoError(t, err)
+
+		st, err := p.Stage(set, "verify")
+		require.NoError(t, err)
+		assert.Equal(t, "cursor", st.Executor)
+		assert.Equal(t, "cursor-grok-4.6", st.Model)
+		assert.Equal(t, "high", st.Effort)
+	})
+
+	t.Run("cursor:high against another binary fails at Stage, not at load", func(t *testing.T) {
+		set, p := loadProfile(t, `model: claude/opus:high
+agents:
+  - {name: a, lenses: [bugs]}
+stages:
+  verify: cursor:high
+`)
+		_, err := p.Stage(set, "verify")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "cursor runner has effort")
+	})
 }
 
 func TestProfile_ValidationErrors(t *testing.T) {

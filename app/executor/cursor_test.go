@@ -187,6 +187,27 @@ func TestCursor_appendsOutputContract(t *testing.T) {
 	assert.Contains(t, res.Raw, "Return ONLY a JSON object")
 }
 
+func TestCursor_toolProgressIgnoresMetadataKeys(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("testdata", "cursor-tool-metadata.jsonl"))
+	require.NoError(t, err)
+	sink := discardSink()
+	c := executor.NewCursor(fakeRunner("emit", writeFixture(t, data)), executor.Opts{})
+	_, err = c.Run(context.Background(), executor.Request{Prompt: "x"}, sink)
+	require.NoError(t, err)
+
+	var progress []string
+	for _, call := range sink.EmitCalls() {
+		if call.Event.Kind == executor.EventProgress {
+			progress = append(progress, call.Event.Text)
+		}
+	}
+	joined := strings.Join(progress, "\n")
+	assert.Contains(t, joined, "read app/foo.go")
+	assert.NotContains(t, joined, "toolCallId")
+	assert.NotContains(t, joined, "startedAtMs")
+	assert.NotContains(t, joined, "hookAdditionalContexts")
+}
+
 func TestCursor_forceWithAskMode(t *testing.T) {
 	path := writeFixture(t, cursorCapture(t))
 	runner := fakeRunner("emit", path)
