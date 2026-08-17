@@ -33,15 +33,7 @@ func (c *Cursor) Run(ctx context.Context, req Request, sink EventSink) (Result, 
 	}
 	res, err := c.run(ctx, req, spec)
 	res.RequestedModel = req.Model
-	if err != nil {
-		return res, err
-	}
-	if len(res.StructuredOutput) == 0 {
-		if out, exErr := extractJSONObject(res.Raw); exErr == nil {
-			res.StructuredOutput = out
-		}
-	}
-	return res, nil
+	return res, err
 }
 
 // CursorOutputContract is cursor-agent's substitute for claude's --json-schema, appended to every

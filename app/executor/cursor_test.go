@@ -25,7 +25,8 @@ func cursorCapture(t *testing.T) []byte {
 func TestCursor_args(t *testing.T) {
 	path := writeFixture(t, cursorCapture(t))
 	runner := fakeRunner("emit", path)
-	c := executor.NewCursor(runner, executor.Opts{WorkDir: "/tmp/review"})
+	workdir := t.TempDir()
+	c := executor.NewCursor(runner, executor.Opts{WorkDir: workdir})
 
 	req := executor.Request{Prompt: "review this", Model: "cursor-grok-4.6", Effort: "high", Schema: json.RawMessage(`{"type":"object"}`)}
 	_, err := c.Run(context.Background(), req, discardSink())
@@ -42,7 +43,7 @@ func TestCursor_args(t *testing.T) {
 		"--sandbox", "enabled",
 		"--trust",
 		"--model", "cursor-grok-4.6-high",
-		"--workspace", "/tmp/review",
+		"--workspace", workdir,
 	}, call.Args)
 	assert.NotContains(t, call.Args, "--force")
 	assert.NotContains(t, call.Args, "--yolo")
