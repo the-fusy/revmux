@@ -6,7 +6,13 @@ import (
 	"errors"
 	"io"
 	"strings"
+	"time"
 )
+
+// thinkFlush is how often a thinking or assistant fragment is worth a status-cell update.
+// Cursor-agent streams one word per line; emitting each as activity floods the TUI's
+// 256-event channel and the combined log. Claude emits one narration line per thought.
+const thinkFlush = 300 * time.Millisecond
 
 // Cursor runs the cursor-agent CLI in print mode and decodes its stream-json output.
 // Effort is folded into the model slug (`cursor-grok-4.6` + high → `cursor-grok-4.6-high`)
@@ -90,6 +96,20 @@ func cursorModelSlug(model, effort string) string {
 
 func (c *Cursor) parseStream(ctx context.Context, r io.Reader, sink EventSink) Result {
 	res := Result{}
+	var think strings.Builder
+	var last time.Time
+	flush := func(force bool) {
+		text := flattenLines(think.String())
+		if text == "" {
+			return
+		}
+		now := c.opts.Clock.Now()
+		if !force && !last.IsZero() && now.Sub(last) < thinkFlush {
+			return
+		}
+		c.emit(sink, Event{Kind: EventProgress, Text: clampRunes(text)})
+		last = now
+	}
 	_ = c.readLines(ctx, r, func(line string) {
 		ev, ok := c.event(line)
 		if !ok {
@@ -102,19 +122,37 @@ func (c *Cursor) parseStream(ctx context.Context, r io.Reader, sink EventSink) R
 			}
 		case "thinking":
 			if ev.Subtype == "delta" && ev.Text != "" {
-				c.emit(sink, Event{Kind: EventActivity, Text: flattenLines(ev.Text)})
+				think.WriteString(ev.Text)
+				flush(false)
+			}
+			if ev.Subtype == "completed" {
+				flush(true)
+				think.Reset()
 			}
 		case "assistant":
 			if text := ev.activity(); text != "" {
+				// a short fragment is another token of the same thought; a longer
+				// line is the narration Claude would have put in the log
+				if len([]rune(text)) < 40 {
+					think.WriteString(" ")
+					think.WriteString(text)
+					flush(false)
+					break
+				}
+				flush(true)
+				think.Reset()
 				c.emit(sink, Event{Kind: EventActivity, Text: text})
 			}
 		case "tool_call":
 			if ev.Subtype == "started" {
+				flush(true)
+				think.Reset()
 				if note := cursorToolProgress(ev.ToolCall); note != "" {
 					c.emit(sink, Event{Kind: EventProgress, Text: note})
 				}
 			}
 		case "result":
+			flush(true)
 			res.Tokens = ev.cursorTokens()
 			if ev.Result != "" {
 				if out, err := extractJSONObject(ev.Result); err == nil {

@@ -7,11 +7,13 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/umputun/revmux/app/executor"
+	"github.com/umputun/revmux/app/executor/mocks"
 )
 
 func cursorCapture(t *testing.T) []byte {
@@ -75,6 +77,34 @@ func TestCursor_args_optionalFlagsOmitted(t *testing.T) {
 	args := runner.CommandCalls()[0].Args
 	assert.NotContains(t, args, "--model")
 	assert.NotContains(t, args, "--workspace")
+}
+
+func TestCursor_thinkingDeltasAreCoalescedProgress(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("testdata", "cursor-think-burst.jsonl"))
+	require.NoError(t, err)
+	clk := &mocks.ClockMock{
+		NowFunc:       func() time.Time { return time.Unix(0, 0) },
+		AfterFuncFunc: func(time.Duration, func()) executor.Timer { panic("idle timer unused") },
+	}
+	sink := discardSink()
+	c := executor.NewCursor(fakeRunner("emit", writeFixture(t, data)), executor.Opts{Clock: clk})
+	_, err = c.Run(context.Background(), executor.Request{Prompt: "x"}, sink)
+	require.NoError(t, err)
+
+	var activity, progress []string
+	for _, call := range sink.EmitCalls() {
+		switch call.Event.Kind {
+		case executor.EventActivity:
+			activity = append(activity, call.Event.Text)
+		case executor.EventProgress:
+			progress = append(progress, call.Event.Text)
+		}
+	}
+	assert.Empty(t, activity, "token fragments must not become log lines")
+	require.NotEmpty(t, progress)
+	assert.Contains(t, strings.Join(progress, "\n"), "Reading the diff next")
+	assert.Contains(t, strings.Join(progress, "\n"), "read app/foo.go")
+	assert.Less(t, len(progress), 6, "a burst at one clock instant is one flush plus the tool")
 }
 
 func TestCursor_Run_clean(t *testing.T) {
