@@ -40,12 +40,12 @@ func TestCursor_args(t *testing.T) {
 		"--output-format", "stream-json",
 		"--stream-partial-output",
 		"--mode", "ask",
+		"--force",
 		"--sandbox", "disabled",
 		"--trust",
 		"--model", "cursor-grok-4.6-high",
 		"--workspace", workdir,
 	}, call.Args)
-	assert.NotContains(t, call.Args, "--force")
 	assert.NotContains(t, call.Args, "--yolo")
 }
 
@@ -145,15 +145,15 @@ func TestCursor_appendsOutputContract(t *testing.T) {
 	assert.Contains(t, res.Raw, "Return ONLY a JSON object")
 }
 
-func TestCursor_noForceOnPrint(t *testing.T) {
+func TestCursor_forceWithAskMode(t *testing.T) {
 	path := writeFixture(t, cursorCapture(t))
 	runner := fakeRunner("emit", path)
 	c := executor.NewCursor(runner, executor.Opts{})
 	_, err := c.Run(context.Background(), executor.Request{Prompt: "x"}, discardSink())
 	require.NoError(t, err)
 	args := runner.CommandCalls()[0].Args
+	assert.Contains(t, args, "--force")
 	assert.Contains(t, args, "--mode")
 	assert.Contains(t, args, "ask")
-	assert.NotContains(t, args, "--force")
 	assert.NotContains(t, args, "--yolo")
 }
