@@ -48,17 +48,16 @@ func CursorOutputContract(schema json.RawMessage) string {
 }
 
 func (c *Cursor) args(req Request) []string {
-	// ask + force + no sandbox: ask mode alone rejects every shell call as not readonly
-	// (measured: protocli clickhouse query SELECT 1 came back rejected). --force lets
-	// that shell through; ask still refused a write redirect in the same pairing.
-	// Sandbox stays off so outbound fetches and queries are not blocked, and the
-	// flag is explicit so a user config cannot turn it back on.
+	// ask + no --force + no sandbox. --force would approve every shell call; protocli
+	// is enough, and it is allowed by Shell(protocli) in the CLI allowlist
+	// (~/.cursor/cli-config.json). Ask mode still blocks writes. Sandbox stays off
+	// so those queries can leave the machine; the flag is explicit so a user config
+	// cannot turn it back on.
 	argv := []string{
 		"--print",
 		"--output-format", "stream-json",
 		"--stream-partial-output",
 		"--mode", "ask",
-		"--force",
 		"--sandbox", "disabled",
 		"--trust",
 	}
