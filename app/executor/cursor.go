@@ -48,15 +48,17 @@ func CursorOutputContract(schema json.RawMessage) string {
 }
 
 func (c *Cursor) args(req Request) []string {
-	// ask + no --force: --print otherwise has write and shell. Sandbox is off on purpose —
-	// enabled it also blocks outbound network, and the reviewer has to fetch docs and query
-	// live data. Write safety is ask mode, not the sandbox. The flag is explicit so a user
-	// config cannot turn the sandbox back on.
+	// ask + force + no sandbox: ask mode alone rejects every shell call as not readonly
+	// (measured: protocli clickhouse query SELECT 1 came back rejected). --force lets
+	// that shell through; ask still refused a write redirect in the same pairing.
+	// Sandbox stays off so outbound fetches and queries are not blocked, and the
+	// flag is explicit so a user config cannot turn it back on.
 	argv := []string{
 		"--print",
 		"--output-format", "stream-json",
 		"--stream-partial-output",
 		"--mode", "ask",
+		"--force",
 		"--sandbox", "disabled",
 		"--trust",
 	}
