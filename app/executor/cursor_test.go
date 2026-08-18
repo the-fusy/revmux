@@ -59,7 +59,7 @@ func TestCursor_args_modelAlreadyHasEffort(t *testing.T) {
 	}{
 		{"stem plus effort", "cursor-grok-4.6", "high", "cursor-grok-4.6-high"},
 		{"already ends in effort", "cursor-grok-4.6-high", "high", "cursor-grok-4.6-high"},
-		{"fast suffix after effort", "cursor-grok-4.6-high-fast", "high", "cursor-grok-4.6-high-fast"},
+		{"fast suffix after effort", "cursor-grok-4.6-high-fast", "high", "cursor-grok-4.6-high"},
 		{"xhigh slug plus inherited high", "cursor-grok-4.6-xhigh", "high", "cursor-grok-4.6-xhigh"},
 	}
 	for _, tt := range tests {
@@ -74,6 +74,32 @@ func TestCursor_args_modelAlreadyHasEffort(t *testing.T) {
 			assert.Contains(t, args, tt.want)
 			assert.NotContains(t, args, tt.want+"-"+tt.effort)
 			assert.NotContains(t, args, tt.want+"-high")
+		})
+	}
+}
+
+func TestCursor_args_neverFast(t *testing.T) {
+	path := writeFixture(t, cursorCapture(t))
+	tests := []struct {
+		name, model, effort, want string
+	}{
+		{"catalog fast after high", "cursor-grok-4.6-high-fast", "high", "cursor-grok-4.6-high"},
+		{"fast stem plus effort", "cursor-grok-4.6-fast", "high", "cursor-grok-4.6-high"},
+		{"thinking-high-fast", "claude-opus-5-thinking-high-fast", "", "claude-opus-5-thinking-high"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runner := fakeRunner("emit", path)
+			c := executor.NewCursor(runner, executor.Opts{})
+			_, err := c.Run(context.Background(), executor.Request{
+				Prompt: "x", Model: tt.model, Effort: tt.effort,
+			}, discardSink())
+			require.NoError(t, err)
+			args := runner.CommandCalls()[0].Args
+			assert.Contains(t, args, tt.want)
+			for _, a := range args {
+				assert.NotContains(t, a, "-fast")
+			}
 		})
 	}
 }

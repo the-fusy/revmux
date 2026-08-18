@@ -79,8 +79,10 @@ func (c *Cursor) args(req Request) []string {
 
 // cursorModelSlug joins the roster model and effort the way cursor-agent names them.
 // A model that already ends in -<effort> is left alone, so `cursor-grok-4.6-high` + high
-// does not become `cursor-grok-4.6-high-high`.
+// does not become `cursor-grok-4.6-high-high`. The catalog's `-fast` sibling is dropped:
+// that SKU is the cheap/low-latency line and is never what a review asks for.
 func cursorModelSlug(model, effort string) string {
+	model = strings.TrimSuffix(model, "-fast")
 	if model == "" {
 		return ""
 	}
@@ -94,7 +96,7 @@ func cursorModelSlug(model, effort string) string {
 }
 
 // cursorSlugHasEffort reports whether a catalog id already carries an effort token, so
-// `cursor-grok-4.6-high-fast` plus a profile `:high` is not rewritten as `...-high-fast-high`.
+// `cursor-grok-4.6-high` plus a profile `:high` is not rewritten as `...-high-high`.
 func cursorSlugHasEffort(model string) bool {
 	for _, part := range strings.Split(model, "-") {
 		switch part {
