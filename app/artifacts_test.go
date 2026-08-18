@@ -213,6 +213,8 @@ func TestRun_archive(t *testing.T) {
 	t.Run("the manifest records the executor that delivered, not the roster's", func(t *testing.T) {
 		o := runOpts{}
 		cfg := pipeline.Config{
+			Set:     &prompt.Set{},
+			Profile: &prompt.Profile{},
 			Roster: []prompt.AgentSpec{{
 				Name: "bugs", Lenses: []string{"bugs"},
 				Executor: "claude", Model: "opus", Effort: "high",
