@@ -236,26 +236,26 @@ stages:
 		assert.Contains(t, err.Error(), `unknown stage "nosuch"`)
 	})
 
-	// cursor:high is the same omit-the-model pattern as synthesis: codex — or() fills the model
+	// cursor-agent:high is the same omit-the-model pattern as synthesis: codex — or() fills the model
 	// from the profile, and check() sees the resolved runner
-	t.Run("a cursor:high stage override inherits the profile's model", func(t *testing.T) {
-		set, p := loadProfile(t, `model: cursor/cursor-grok-4.6:medium
+	t.Run("a cursor-agent:high stage override inherits the profile's model", func(t *testing.T) {
+		set, p := loadProfile(t, `model: cursor-agent/cursor-grok-4.6:medium
 agents:
   - {name: a, lenses: [bugs]}
 stages:
-  verify: cursor:high
+  verify: cursor-agent:high
 `)
 		st, err := p.Stage(set, "verify")
 		require.NoError(t, err)
-		assert.Equal(t, "cursor", st.Executor)
+		assert.Equal(t, "cursor-agent", st.Executor)
 		assert.Equal(t, "cursor-grok-4.6", st.Model)
 		assert.Equal(t, "high", st.Effort)
 	})
 
-	t.Run("a stage file naming cursor:high inherits the profile's model", func(t *testing.T) {
+	t.Run("a stage file naming cursor-agent:high inherits the profile's model", func(t *testing.T) {
 		project := writeTree(t, t.TempDir(), map[string]string{
-			"prompts/verify.md": "---\ndescription: d\nmodel: cursor:high\n---\nbody",
-			"prompts/profiles/custom.md": "---\nmodel: cursor/cursor-grok-4.6:medium\n" +
+			"prompts/verify.md": "---\ndescription: d\nmodel: cursor-agent:high\n---\nbody",
+			"prompts/profiles/custom.md": "---\nmodel: cursor-agent/cursor-grok-4.6:medium\n" +
 				"agents:\n  - {name: a, lenses: [bugs]}\n---\nbody",
 		})
 		set, err := Load(LoadOpts{ProjectDir: project})
@@ -265,21 +265,21 @@ stages:
 
 		st, err := p.Stage(set, "verify")
 		require.NoError(t, err)
-		assert.Equal(t, "cursor", st.Executor)
+		assert.Equal(t, "cursor-agent", st.Executor)
 		assert.Equal(t, "cursor-grok-4.6", st.Model)
 		assert.Equal(t, "high", st.Effort)
 	})
 
-	t.Run("cursor:high against another binary fails at Stage, not at load", func(t *testing.T) {
+	t.Run("cursor-agent:high against another binary fails at Stage, not at load", func(t *testing.T) {
 		set, p := loadProfile(t, `model: claude/opus:high
 agents:
   - {name: a, lenses: [bugs]}
 stages:
-  verify: cursor:high
+  verify: cursor-agent:high
 `)
 		_, err := p.Stage(set, "verify")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "cursor runner has effort")
+		assert.Contains(t, err.Error(), "cursor-agent runner has effort")
 	})
 }
 
@@ -313,10 +313,10 @@ func TestProfile_ValidationErrors(t *testing.T) {
 			`unknown effort "turbo"`},
 		{"stage override that is not a runner string", "agents:\n  - {name: a, lenses: [bugs]}\nstages:\n  {verify: {lenses: [bugs]}}\n",
 			"parse front matter"},
-		{"cursor effort without a model", "model: cursor:high\nagents:\n  - {name: a, lenses: [bugs]}\n",
-			"cursor runner has effort"},
-		{"cursor agent inherits effort without a model", "model: claude/opus:high\nagents:\n  - {name: a, lenses: [bugs], model: cursor}\n",
-			"cursor runner has effort"},
+		{"cursor-agent effort without a model", "model: cursor-agent:high\nagents:\n  - {name: a, lenses: [bugs]}\n",
+			"cursor-agent runner has effort"},
+		{"cursor-agent inherits effort without a model", "model: claude/opus:high\nagents:\n  - {name: a, lenses: [bugs], model: cursor-agent}\n",
+			"cursor-agent runner has effort"},
 		{"empty stage override", "agents:\n  - {name: a, lenses: [bugs]}\nstages:\n  {verify: \"\"}\n",
 			"stage verify: empty runner"},
 		{"whitespace stage override", "agents:\n  - {name: a, lenses: [bugs]}\nstages:\n  {verify: \"  \"}\n",
@@ -499,7 +499,7 @@ func TestStage_FrontMatter(t *testing.T) {
 
 func TestVocabularies(t *testing.T) {
 	assert.Equal(t, []string{"low", "medium", "high", "xhigh", "max"}, Efforts())
-	assert.Equal(t, []string{"claude", "codex", "cursor"}, Executors())
+	assert.Equal(t, []string{"claude", "codex", "cursor-agent"}, Executors())
 
 	Efforts()[0] = "mutated"
 	Executors()[0] = "mutated"

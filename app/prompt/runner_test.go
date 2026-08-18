@@ -15,7 +15,7 @@ func TestParseRunner(t *testing.T) {
 		{"binary alone", "claude", Runner{Executor: "claude"}},
 		{"binary and model", "claude/opus", Runner{Executor: "claude", Model: "opus"}},
 		{"the whole triple", "codex/gpt-5.6-sol:high", Runner{Executor: "codex", Model: "gpt-5.6-sol", Effort: "high"}},
-		{"cursor grok", "cursor/cursor-grok-4.6:high", Runner{Executor: "cursor", Model: "cursor-grok-4.6", Effort: "high"}},
+		{"cursor grok", "cursor-agent/cursor-grok-4.6:high", Runner{Executor: "cursor-agent", Model: "cursor-grok-4.6", Effort: "high"}},
 		{"binary and effort", "codex:xhigh", Runner{Executor: "codex", Effort: "xhigh"}},
 		{"empty is empty", "", Runner{}},
 		{"surrounding space", "  claude/opus:low  ", Runner{Executor: "claude", Model: "opus", Effort: "low"}},

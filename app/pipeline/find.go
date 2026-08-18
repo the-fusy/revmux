@@ -22,7 +22,7 @@ import (
 // needs it so a cursor prompt is not stored as Claude's narration contract.
 const (
 	executorCodex  = "codex"
-	executorCursor = "cursor"
+	executorCursor = "cursor-agent"
 )
 
 // maxAttempts is one launch plus one retry. A second failure degrades the source and the run

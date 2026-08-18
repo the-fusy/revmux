@@ -134,14 +134,10 @@ else
 fi
 
 for exe in $executors; do
-    bin=$exe
-    if [ "$exe" = cursor ]; then
-        bin=cursor-agent
-    fi
-    if command -v "$bin" >/dev/null 2>&1; then
-        echo "$exe: $(command -v "$bin")"
+    if command -v "$exe" >/dev/null 2>&1; then
+        echo "$exe: $(command -v "$exe")"
     else
-        fail "$exe: MISSING - required by this invocation ($bin)"
+        fail "$exe: MISSING - required by this invocation"
     fi
 done
 

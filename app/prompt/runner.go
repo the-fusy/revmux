@@ -52,8 +52,8 @@ func parseRunner(s string) (Runner, error) {
 // inherited piecemeal: an entry naming a binary brings its own model, or it would run the fallback's
 // model on the wrong binary — the pairing this whole type exists to prevent.
 func (r Runner) check() error {
-	if r.Executor == "cursor" && r.Effort != "" && r.Model == "" {
-		return fmt.Errorf("cursor runner has effort %q but no model; cursor-agent only takes effort in the model slug", r.Effort)
+	if r.Executor == "cursor-agent" && r.Effort != "" && r.Model == "" {
+		return fmt.Errorf("cursor-agent runner has effort %q but no model; cursor-agent only takes effort in the model slug", r.Effort)
 	}
 	return nil
 }

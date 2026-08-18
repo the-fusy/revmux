@@ -39,16 +39,16 @@ func TestApplyQuotaFallback(t *testing.T) {
 	t.Run("claude opus becomes cursor thinking", func(t *testing.T) {
 		got, ok := applyQuotaFallback(RunnerSpec{Executor: "claude", Model: "opus", Effort: "high"}, limited, nil)
 		assert.True(t, ok)
-		assert.Equal(t, RunnerSpec{Executor: "cursor", Model: "claude-opus-5-thinking", Effort: "high"}, got)
+		assert.Equal(t, RunnerSpec{Executor: "cursor-agent", Model: "claude-opus-5-thinking", Effort: "high"}, got)
 	})
 	t.Run("codex sol keeps the slug", func(t *testing.T) {
 		got, ok := applyQuotaFallback(RunnerSpec{Executor: "codex", Model: "gpt-5.6-sol", Effort: "high"}, limited, nil)
 		assert.True(t, ok)
-		assert.Equal(t, "cursor", got.Executor)
+		assert.Equal(t, "cursor-agent", got.Executor)
 		assert.Equal(t, "gpt-5.6-sol", got.Model)
 	})
 	t.Run("cursor does not switch", func(t *testing.T) {
-		in := RunnerSpec{Executor: "cursor", Model: "cursor-grok-4.6", Effort: "high"}
+		in := RunnerSpec{Executor: "cursor-agent", Model: "cursor-grok-4.6", Effort: "high"}
 		got, ok := applyQuotaFallback(in, limited, nil)
 		assert.False(t, ok)
 		assert.Equal(t, in, got)

@@ -241,16 +241,16 @@ func TestFinder_quotaFallsBackToCursor(t *testing.T) {
 	require.Len(t, specs, 2)
 	assert.Equal(t, "claude", specs[0].Executor)
 	assert.Equal(t, "opus", specs[0].Model)
-	assert.Equal(t, "cursor", specs[1].Executor)
+	assert.Equal(t, "cursor-agent", specs[1].Executor)
 	assert.Equal(t, "claude-opus-5-thinking", specs[1].Model)
-	assert.Equal(t, "cursor", res.stat.Executor)
+	assert.Equal(t, "cursor-agent", res.stat.Executor)
 	assert.Equal(t, "on cursor", res.findings[0].Title)
 }
 
 func TestFinder_cursorQuotaDoesNotSwitchExecutor(t *testing.T) {
 	h := newHarness(t)
 	spec := h.cfg.Roster[0]
-	spec.Executor = "cursor"
+	spec.Executor = "cursor-agent"
 	spec.Model = "cursor-grok-4.6"
 	var specs []RunnerSpec
 	h.cfg.NewRunner = func(s RunnerSpec) Runner {
@@ -263,7 +263,7 @@ func TestFinder_cursorQuotaDoesNotSwitchExecutor(t *testing.T) {
 	res := h.finder(func(Event) {}).runAgent(context.Background(), spec, 0)
 	require.False(t, res.ok())
 	for _, s := range specs {
-		assert.Equal(t, "cursor", s.Executor)
+		assert.Equal(t, "cursor-agent", s.Executor)
 	}
 }
 

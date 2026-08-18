@@ -28,7 +28,7 @@ var revision = "unknown"
 // executorCodex and executorCursor are the roster binaries that are not claude, which is the default.
 const (
 	executorCodex  = "codex"
-	executorCursor = "cursor"
+	executorCursor = "cursor-agent"
 )
 
 // runOpts is what run needs from its surroundings. Every one of them is injected so the whole entry
