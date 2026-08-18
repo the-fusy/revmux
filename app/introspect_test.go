@@ -118,11 +118,6 @@ func TestOptions_catalogProfileStages(t *testing.T) {
 		require.Len(t, stages, 2, "%s reports every stage, not only the ones it overrides", name)
 	}
 
-	assert.Equal(t, []stageRunner{
-		{Name: "synthesis", Executor: "codex", Model: "gpt-5.6-sol", Effort: "high"},
-		{Name: "verify", Executor: "codex", Model: "gpt-5.6-sol", Effort: "high"},
-	}, profiles["codex-only"])
-
 	for _, st := range profiles["comprehensive"] {
 		assert.Equal(t, "claude", st.Executor, "%s: a profile naming no override keeps the stage file's runner", st.Name)
 	}

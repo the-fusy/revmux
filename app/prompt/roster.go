@@ -180,7 +180,8 @@ func (p *Profile) Roster(lensOverride []string, known map[string]struct{}) ([]Ag
 
 // Stage resolves the stage prompt this profile runs: the shared body from the set, under the runner three
 // layers produce. Highest first: the profile's `stages:` entry, the stage file's own `model:`, then the
-// profile's `model:`. The shipped stage files name none, which is what makes `codex-only` one line.
+// profile's `model:`. The shipped stage files name none, which is what makes a profile that only
+// names its model one line.
 func (p *Profile) Stage(set *Set, name string) (*Stage, error) {
 	st, err := set.Stage(name)
 	if err != nil {

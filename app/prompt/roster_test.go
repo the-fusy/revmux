@@ -85,7 +85,7 @@ stages:
 	})
 
 	// a profile's model is the review's model, so a stage follows it with no stages: block to write —
-	// this is what lets codex-only be one line rather than one line plus a two-entry block
+	// this is what lets a profile that only names its model be one line rather than one line plus a two-entry block
 	t.Run("a stage follows the profile with no stages block at all", func(t *testing.T) {
 		set, p := loadProfile(t, "model: codex/gpt-5.6-sol\nagents:\n  - {name: a, lenses: [bugs]}\n")
 		for _, name := range []string{"synthesis", "verify"} {
