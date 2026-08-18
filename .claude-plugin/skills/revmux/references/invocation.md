@@ -219,8 +219,6 @@ will not read, and an unwritable `./.revmux/` under `revmux init`.
 | `comprehensive` | `bugs+impl`, `arch+quality`, `docs+tests` on claude, plus an adversarial codex peer | default; a real change with real risk |
 | `focused` | one `bugs` agent plus the codex peer | small or time-boxed change, correctness is the concern |
 | `final` | `bugs+impl` plus the codex peer, nothing below major reported | last look before merging |
-| `claude-only` | `bugs+impl`, `arch+quality`, `docs+tests`, `adversarial` — all on claude | codex is unavailable or unwanted |
-| `codex-only` | the same four splits on codex, synthesis and verify included — no claude anywhere | claude is unavailable or unwanted |
 | `grill-me` | `bugs+impl` and `architecture+quality`, each run once on claude and once on codex, every agent reading against the change | the user asked to be grilled; corroboration between two vendors on one lens pair is the point |
 | `expert` | two agents at the highest effort — codex `gpt-5.6-sol:xhigh` and claude `fable:xhigh` — each carrying all eight lenses, both stages on fable | a plan, or a change nobody wants to get wrong. Both agents read everything, so agreement between them is real corroboration rather than two halves of one review |
 | `triage` | `facts` (grounding + precedent), `thesis`, `antithesis` on claude, plus `cost` on codex | the subject is a filed item rather than a diff — an issue, a proposal, a discussion |
@@ -269,7 +267,7 @@ easy to get wrong:
 - it produces **one** agent carrying every named lens, not one agent per lens. A caller naming two
   lenses is asking for a viewpoint, not for two corroborating votes.
 - the synthesized entry inherits the selected profile's own runner, **binary included**, so
-  `--profile codex-only --lenses bugs` runs on codex. A profile's per-entry models do not survive the
+  `--profile focused --lenses bugs` runs on claude. A profile's per-entry models do not survive the
   override, and losing the second source loses every cross-source confidence boost.
 
 Prefer a profile unless there is a specific reason to narrow. `--lenses docs` on a documentation-only
@@ -566,12 +564,13 @@ form: the decision is the user's, one task per call.
 
 ## Environment
 
-revmux drives the model CLIs as subprocesses, so both must already be installed and authenticated:
+revmux drives the model CLIs as subprocesses, so whichever ones a profile names must already be installed
+and authenticated:
 
 - `claude` — every lens agent and both model stages run on it by default
-- `codex` — needed when a profile, a roster entry or a stage names it in its `model:`. `claude-only`
-  needs claude alone and `codex-only` needs codex alone; the other six shipped profiles need both.
-  `preflight.sh <profile>` answers it for the profile that will actually run
+- `codex` — needed when a profile, a roster entry or a stage names it in its `model:`
+- `cursor-agent` — needed when a roster entry or stage names it, and it is the retry target when a
+  claude or codex meter is spent. `preflight.sh <profile>` answers it for the profile that will actually run
 
 `ANTHROPIC_API_KEY` is stripped from the child environment by default so `claude` uses interactive
 subscription auth; `--preserve-anthropic-api-key` passes it through for key-based auth. `CLAUDECODE`

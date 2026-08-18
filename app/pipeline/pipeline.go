@@ -63,6 +63,14 @@ func archivedPrompt(exec, text string, schema json.RawMessage) string {
 	}
 }
 
+// recordDelivered copies a delivered runner onto the stage the report and manifest read.
+func recordDelivered(stage *prompt.Stage, spec RunnerSpec) {
+	if stage == nil {
+		return
+	}
+	stage.Executor, stage.Model, stage.Effort = spec.Executor, spec.Model, spec.Effort
+}
+
 // Runner runs one supervised process. It is declared here, by the consumer, and exported only so
 // package main can name it when it supplies the factory.
 type Runner interface {

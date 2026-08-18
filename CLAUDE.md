@@ -331,7 +331,7 @@ to carry a model across binaries, and the three fallback layers are applied in t
 together — collapsing any two of them loses whichever the third turns out to be compatible with.
 
 The stage files name **no** runner: they are text, and the profile's `model:` reaches the roster, the
-`--lenses` agent and both stages alike, so `codex-only` is one line. A profile's optional `stages:` block is
+`--lenses` agent and both stages alike, so a profile whose `model:` is `codex` is one line. A profile's optional `stages:` block is
 for a deliberately mixed run and names each stage separately, so synthesis and verify can take different
 models.
 `app/pipeline` resolves through `Profile.Stage`, never `Set.Stage` — the latter answers what the file says,
@@ -523,20 +523,21 @@ Stamping happens in `find`, not synthesis, or `--no-synthesis` runs carry invent
   that list to make a failing run pass is the mechanism the derived-from-`ProfileNames()` design exists to
   prevent, and the three that are there each name the review shape their bar is written for.
 - **The severity bar is duplicated in every profile body** and nothing composes it from one place:
-  `comprehensive`, `codex-only`, `claude-only`, `focused` and `grill-me` carry a byte-identical
+  `comprehensive`, `focused` and `grill-me` carry a byte-identical
   `## Severity bar` section, `final` carries a two-severity variant of the same text, `triage` carries
   a bar that is not a variant of it at all — its severities rate how much a point bears on the decision,
   because it reads a filed item and there is no runtime for anything to go wrong at — and `expert` carries
   a third shape, rating what goes wrong if the thing is built and run as written, because what it reviews
   may be a plan rather than a change.
-  A change to what a severity means is eight edits, and the five identical copies must stay identical —
+  A change to what a severity means is six edits, and the three identical copies must stay identical —
   two profiles disagreeing about what `major` is means the same defect gates one review shape and not
   another, which reads as the model being inconsistent rather than the prompts being out of step.
-  A code-review wording change stops at the five: propagating it into `triage` or `expert` is what the
+  A code-review wording change stops at the three: propagating it into `triage` or `expert` is what the
   separate bars exist to prevent.
   `.claude/rules/prompts.md` calls the body "the shared preamble and severity bar"; shared across the
   agents of one run, not across profiles.
-  **`## What not to report` is the second such block**, byte-identical in six of the eight, and it is the
+  **`## What not to report` is the second such block**, byte-identical in the code-review profiles except
+  `triage` and `expert`, and it is the
   one a finder consults before writing anything down — so a rule added to one profile and not the others
   makes the same finding reportable under one review shape and suppressed under another.
   `triage` and `expert` are the exceptions and carry their own, since the shipped copy is written about

@@ -418,6 +418,13 @@ func (h *harness) save(name string, data []byte) {
 	if err != nil {
 		return
 	}
+	if b, ok := w.(*syncBuffer); ok {
+		b.mu.Lock()
+		if b.writeErr == nil {
+			b.buf.Reset()
+		}
+		b.mu.Unlock()
+	}
 	_, _ = w.Write(data)
 	_ = w.Close()
 }

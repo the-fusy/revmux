@@ -12,7 +12,7 @@ and get the same review, and change a timeout without touching a prompt.
 ### Layout
 
 ```
-prompts/profiles/comprehensive.md   focused.md   final.md   claude-only.md   codex-only.md   grill-me.md
+prompts/profiles/comprehensive.md   focused.md   final.md   grill-me.md
 prompts/profiles/expert.md
 prompts/profiles/triage.md
 prompts/synthesis.md   prompts/verify.md
@@ -73,7 +73,7 @@ It also lets `model:` mean "that binary, whatever it defaults to", which two fie
 A model is a model *of a binary* — `opus` means nothing to codex — so separate keys let a file state a
 pairing that cannot run, and every layer that inherited one without the other recreated it.
 That is not hypothetical: the `--lenses` override took the profile's `model` while forcing `executor` to
-claude, and under `codex-only` built a claude agent asked for `gpt-5.6-sol`.
+claude, and on a profile whose `model:` was `codex` built a claude agent asked for `gpt-5.6-sol`.
 `Runner.or` therefore refuses to inherit a model across binaries, and carries only the effort, which
 belongs to neither model.
 
@@ -119,13 +119,13 @@ carry only a `description:`, so a profile's own `model` reaches them with nothin
 ### A profile's runner covers the whole review
 
 The stage files are one per tree, so what they declare cannot be a per-profile answer.
-When they declared one, a `codex-only` profile was honest about the find stage and silently false about the
+When they declared one, a profile whose `model:` was `codex` was honest about the find stage and silently false about the
 other two: the round ran four codex finders and then synthesized on claude, and the only way to change that
 was to override `prompts/synthesis.md` for **every** profile at once, which stops `--profile` switching the
 review.
 
 So the stage files name no runner and the profile's `model:` reaches everything — the roster, the agent
-`--lenses` synthesizes, and both stages. `codex-only` is one line as a result, which is the point: the
+`--lenses` synthesizes, and both stages. A profile whose `model:` is `codex` is one line as a result, which is the point: the
 version of this that kept `executor:` on the stages made the shipped profile state one fact three times,
 and the repetition was load-bearing for a reason nothing in the file explained.
 
@@ -183,10 +183,10 @@ It produces **one agent carrying every named lens**, not one agent per lens —
 the alternative would change the source count, and a caller asking for two lenses is asking for a viewpoint,
 not for two corroborating votes.
 The synthesized entry inherits the profile's top-level `model` **whole, binary included**, so
-`--profile codex-only --lenses bugs` finds on codex; a roster's own per-entry model does not survive the
+`--profile focused --lenses bugs` finds on claude; a roster's own per-entry model does not survive the
 override, since the caller named the lens set explicitly.
 Taking the model while forcing the binary to claude is what built a claude agent asked for `gpt-5.6-sol`,
-and on a codex-only host left the run with no finder that could launch.
+and on a host with only codex left the run with no finder that could launch.
 The profile's `stages:` block survives it too, because the flag replaces the roster and a stage is not in
 the roster.
 It is named `lenses`, and that name is not cosmetic: it reaches `Finding.sources` and becomes

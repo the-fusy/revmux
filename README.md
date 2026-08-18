@@ -99,8 +99,8 @@ either, ask for a review in words: revmux this branch, revmux pr 123, re-review 
 [Agent skills](#agent-skills) for what it does.
 
 revmux drives the model CLIs as subprocesses, so whichever ones your profile names must already be installed
-and authenticated: both for `comprehensive`, `focused`, `final`, `grill-me`, `triage` and `expert`, claude
-alone for `claude-only`, codex alone for `codex-only`. `preflight.sh` in the shipped skill answers it for any
+and authenticated: `claude`, `codex` and `cursor-agent` as the roster requires. A spent claude or
+codex meter retries that entry on `cursor-agent`. `preflight.sh` in the shipped skill answers it for any
 profile and any invocation.
 
 `ANTHROPIC_API_KEY` is stripped from the child environment by default so `claude` uses interactive
@@ -258,13 +258,11 @@ codex mix inside one review.
 | `comprehensive` | `bugs+impl`, `arch+quality`, `docs+tests` on claude plus an adversarial codex peer |
 | `focused` | one `bugs` agent plus the codex peer, for a small or time-boxed change |
 | `final` | `bugs+impl` plus the codex peer, nothing below major reported |
-| `claude-only` | the same four lens splits on claude, for a machine with no codex |
-| `codex-only` | the same splits on codex, and synthesis and verify with them |
 | `grill-me` | two lens splits, each run once on claude and once on codex |
 | `expert` | two agents at the highest effort, each carrying all eight code lenses |
 | `triage` | a four-way panel over a filed item rather than a diff |
 
-**The eight are starting points, not the menu.** A profile is a file under `prompts/profiles/`, so dropping
+**The six are starting points, not the menu.** A single-binary host writes a user profile whose `model:` is `claude`, `codex` or `cursor-agent` — there is no shipped one-binary roster. A profile is a file under `prompts/profiles/`, so dropping
 `.revmux/prompts/profiles/release.md` into a project makes `--profile release` work with no registration step
 anywhere. Its roster can be as wide as you are willing to pay for, each entry carries whatever lenses the job
 needs, and any entry can leave the profile's model for its own. Lenses resolve the same way, so a roster

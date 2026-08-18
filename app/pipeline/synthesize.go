@@ -112,6 +112,9 @@ func (s *synthesizer) dispatch(ctx context.Context, stage *prompt.Stage, text st
 		if next, ok := applyQuotaFallback(spec, res, fault); ok {
 			spec = next
 			req.Model, req.Effort = next.Model, next.Effort
+			recordDelivered(s.stage, next)
+			s.save(path.Join(task.StagePromptDir, stageSynthesis+".md"),
+				[]byte(archivedPrompt(next.Executor, text, finding.SynthesisSchema())))
 			s.emit(Event{Kind: EventAgentRetried, Agent: stageSynthesis, Text: "quota exhausted; retrying on cursor"})
 			continue
 		}

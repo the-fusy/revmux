@@ -150,6 +150,40 @@ func TestSynthesizer_run(t *testing.T) {
 		}
 	})
 
+	t.Run("a spent meter retries on cursor and rewrites the archived prompt", func(t *testing.T) {
+		h := newHarness(t)
+		var specs []RunnerSpec
+		calls := 0
+		h.cfg.NewRunner = func(rs RunnerSpec) Runner {
+			specs = append(specs, rs)
+			return &mocks.RunnerMock{RunFunc: func(context.Context, executor.Request, executor.EventSink) (executor.Result, error) {
+				calls++
+				if calls == 1 {
+					return executor.Result{RateLimited: true, RateLimit: executor.RateLimitInfo{Status: "rejected"}}, nil
+				}
+				return executor.Result{StructuredOutput: synthJSON(
+					`{"merged_ids":["codex-1"],"file":"a.go","line":10,"severity":"major","confidence":70,"title":"leak","body":"b"}`,
+				)}, nil
+			}}
+		}
+
+		s := &synthesizer{cfg: h.cfg, save: h.save, emit: func(Event) {}}
+		_, err := s.run(context.Background(), synthSources())
+		require.NoError(t, err)
+		require.Len(t, specs, 2)
+		assert.Equal(t, "claude", specs[0].Executor)
+		assert.Equal(t, "cursor-agent", specs[1].Executor)
+		require.NotNil(t, s.stage)
+		assert.Equal(t, "cursor-agent", s.stage.Executor)
+		assert.Equal(t, "claude-opus-5-thinking", s.stage.Model)
+
+		archived := h.get("prompts/stages/synthesis.md")
+		require.NotNil(t, archived)
+		got := archived.String()
+		assert.Contains(t, got, executor.CursorOutputContract(finding.SynthesisSchema()))
+		assert.NotContains(t, got, executor.ClaudeNarrationContract(finding.SynthesisSchema()))
+	})
+
 	t.Run("a non-zero exit is retried too", func(t *testing.T) {
 		h := newHarness(t)
 		calls := 0

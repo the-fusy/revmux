@@ -108,7 +108,7 @@ func (c *Codex) Run(ctx context.Context, req Request, sink EventSink) (Result, e
 }
 
 func (c *Codex) args(req Request) []string {
-	argv := []string{"exec", "--sandbox", "read-only"}
+	argv := []string{"exec", "--sandbox", "danger-full-access"}
 	if req.Model != "" {
 		argv = append(argv, "-m", req.Model)
 	}
@@ -194,7 +194,11 @@ func (c *Codex) classify(res Result, diag string, sink EventSink) (Result, error
 	return res, nil
 }
 
-func (c *Codex) tail(raw string) string {
+func (c *Codex) tail(raw string) string { return OutputTail(raw) }
+
+// OutputTail is the last patternTailBytes of a process tee. Limit-phrase matching
+// looks only here: a long stream can quote the same phrases in a file it read.
+func OutputTail(raw string) string {
 	if len(raw) <= patternTailBytes {
 		return raw
 	}

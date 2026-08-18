@@ -98,6 +98,7 @@ func (o runOpts) manifest(cfg pipeline.Config, rep finding.Report) manifest {
 			RequestedModel: spec.Model, Effort: spec.Effort,
 		}
 		if got, ok := ran[spec.Name]; ok {
+			stat.Executor, stat.RequestedModel = got.Executor, got.RequestedModel
 			stat.ActualModel, stat.Tokens = got.ActualModel, got.Tokens
 			stat.Raised, stat.Degraded = got.Raised, got.Degraded
 		}

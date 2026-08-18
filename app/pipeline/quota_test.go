@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,6 +25,10 @@ func TestQuotaExhausted(t *testing.T) {
 		{"quota exceeded", executor.Result{Raw: "quota exceeded"}, nil, true},
 		{"insufficient_quota", executor.Result{Raw: "insufficient_quota"}, nil, true},
 		{"stall is not quota", executor.Result{IdleTimedOut: true}, nil, false},
+		{"stall whose tee quotes a limit phrase is not quota", executor.Result{IdleTimedOut: true, Raw: "quota exceeded\n"}, nil, false},
+		{"rate-limited stall is still quota", executor.Result{RateLimited: true, IdleTimedOut: true}, nil, true},
+		{"phrase only in the prefix of a long tee is not quota", executor.Result{Raw: "quota exceeded\n" + strings.Repeat("x", 3000)}, nil, false},
+		{"phrase in the tail of a long tee is quota", executor.Result{Raw: strings.Repeat("x", 3000) + "\nquota exceeded"}, nil, true},
 		{"exit 1 is not quota", executor.Result{ExitCode: 1}, nil, false},
 		{"findings mentioning quota are not themselves a limit", executor.Result{StructuredOutput: []byte(`{"title":"you've hit your usage limit"}`)}, nil, false},
 	}
@@ -56,6 +61,12 @@ func TestApplyQuotaFallback(t *testing.T) {
 	t.Run("a stall does not switch", func(t *testing.T) {
 		in := RunnerSpec{Executor: "claude", Model: "opus", Effort: "high"}
 		got, ok := applyQuotaFallback(in, executor.Result{IdleTimedOut: true}, nil)
+		assert.False(t, ok)
+		assert.Equal(t, in, got)
+	})
+	t.Run("a stall whose tee quotes a limit phrase does not switch", func(t *testing.T) {
+		in := RunnerSpec{Executor: "claude", Model: "opus", Effort: "high"}
+		got, ok := applyQuotaFallback(in, executor.Result{IdleTimedOut: true, Raw: "quota exceeded"}, nil)
 		assert.False(t, ok)
 		assert.Equal(t, in, got)
 	})

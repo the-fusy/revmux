@@ -258,7 +258,7 @@ An archive write that fails is a run failure, not a warning — see `.claude/rul
 `find` selects an executor per roster entry, because entries differ in the runner their `model:` names.
 The stages select one too, resolved by `Profile.Stage` from three layers, highest first: the profile's
 optional `stages:` override, the stage file's own `model:`, then the profile's `model:`. The shipped stage files
-name none, so under `codex-only` both stages run on codex without either file mentioning it.
+name none, so a profile whose `model:` is `codex` runs both stages on codex without either file mentioning it.
 The pipeline must not import concrete executor types to do that.
 
 Inject a factory on `Config` from `package main`.

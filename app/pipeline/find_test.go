@@ -244,7 +244,40 @@ func TestFinder_quotaFallsBackToCursor(t *testing.T) {
 	assert.Equal(t, "cursor-agent", specs[1].Executor)
 	assert.Equal(t, "claude-opus-5-thinking", specs[1].Model)
 	assert.Equal(t, "cursor-agent", res.stat.Executor)
+	assert.Equal(t, "claude-opus-5-thinking", res.stat.RequestedModel)
 	assert.Equal(t, "on cursor", res.findings[0].Title)
+
+	archived := h.get("prompts/agents/bugs.md")
+	require.NotNil(t, archived, "the delivering attempt's prompt must be on disk")
+	got := archived.String()
+	assert.Contains(t, got, executor.CursorOutputContract(finding.FinderSchema()),
+		"the archived prompt is the cursor contract the retry received")
+	assert.NotContains(t, got, executor.ClaudeNarrationContract(finding.FinderSchema()),
+		"a rewritten archive must not still carry the failed binary's contract")
+}
+
+func TestFinder_stallWithQuotaPhraseDoesNotSwitchExecutor(t *testing.T) {
+	h := newHarness(t)
+	var specs []RunnerSpec
+	var attempts atomic.Int64
+	h.cfg.NewRunner = func(spec RunnerSpec) Runner {
+		specs = append(specs, spec)
+		return &mocks.RunnerMock{RunFunc: func(context.Context, executor.Request, executor.EventSink) (executor.Result, error) {
+			if attempts.Add(1) == 1 {
+				return executor.Result{IdleTimedOut: true, Raw: "quota exceeded\n"}, nil
+			}
+			return executor.Result{StructuredOutput: findingsJSON(
+				`{"file":"a.go","line":1,"severity":"major","confidence":85,"title":"retried"}`)}, nil
+		}}
+	}
+
+	res := h.finder(func(Event) {}).runAgent(context.Background(), h.cfg.Roster[0], 0)
+	require.True(t, res.ok())
+	require.Len(t, specs, 2)
+	assert.Equal(t, "claude", specs[0].Executor)
+	assert.Equal(t, "claude", specs[1].Executor, "a stall whose tee quotes a limit phrase retries the same binary")
+	assert.Equal(t, "claude", res.stat.Executor)
+	assert.Equal(t, "opus", res.stat.RequestedModel)
 }
 
 func TestFinder_cursorQuotaDoesNotSwitchExecutor(t *testing.T) {

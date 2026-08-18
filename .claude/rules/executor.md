@@ -313,7 +313,7 @@ Codex is a peer executor, not a special case in the pipeline — but the executo
   the echoed prompt precedes everything codex reports itself, so a first-match diagnostic names a line the
   prompt quoted — a lens body, a finding describing an error — as the failure,
   and hands `classify` a line that can carry a limit pattern the run never hit.
-- `--sandbox read-only` always. revmux never lets an agent write.
+- `--sandbox danger-full-access` always. Reviews fetch facts; a read-only jail blocks that.
 
 ### Error and limit patterns
 

@@ -208,6 +208,8 @@ func (v *verifier) runOne(ctx context.Context, g verifyGroup) ([]finding.Finding
 		if next, ok := applyQuotaFallback(spec, res, err); ok {
 			spec = next
 			req.Model, req.Effort = next.Model, next.Effort
+			recordDelivered(v.stage, next)
+			v.save(v.promptName(g), []byte(archivedPrompt(next.Executor, g.text, finding.VerifySchema())))
 			v.emit(Event{Kind: EventAgentRetried, Agent: agent, Text: "quota exhausted; retrying on cursor"})
 			continue
 		}

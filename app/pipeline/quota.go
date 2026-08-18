@@ -28,8 +28,11 @@ func quotaExhausted(res executor.Result, err error) bool {
 	if res.RateLimited {
 		return true
 	}
+	if res.IdleTimedOut {
+		return false
+	}
 	var b strings.Builder
-	b.WriteString(res.Raw)
+	b.WriteString(executor.OutputTail(res.Raw))
 	b.WriteByte('\n')
 	b.WriteString(res.RateLimit.Status)
 	b.WriteByte('\n')
