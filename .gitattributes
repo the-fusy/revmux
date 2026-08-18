@@ -1,0 +1,4 @@
+# store vendored bytes exactly as upstream ships them, so the committed tree and `go mod vendor`
+# output agree and a dependency diff shows only the dependency change. -text disables eol conversion
+# in both directions; `text eol=lf` would re-normalize on staging and reintroduce the drift.
+vendor/** -text

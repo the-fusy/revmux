@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.2.0
+
+**New Features**
+- resolve a project-level `.revmux/profile.md` under the round's own #12 @umputun
+- flag redundant code comments 736053b
+
+**Improvements**
+- align go comments with the comment rules, fix the treewriter error path #7 @umputun
+- surface the skill install beside the binary install, on the site and in the README 0cb124f
+- add build badges, a site nav bar and the TUI screenshot to the README 96010bd
+- backlog the immaterial gloss and the lens-override panel body bf92e03
+- store vendored files without eol conversion 52052d6
+- bump github.com/charmbracelet/x/ansi from 0.11.7 to 0.11.8 #11 @dependabot
+
+**Bug Fixes**
+- stop closing the tty out from under bubbletea's resize check 774cd46
+- name the entry when an escaping link occupies a directory name fb79350
+- name the adversarial agent for its lens, not its binary 72263b5
+- build the version timestamp with git instead of BSD date 9f33422
+- exit the fake CLI through syscall.Exit e01f8ac
+
 ## v0.1.0
 
 First release.

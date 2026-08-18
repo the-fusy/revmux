@@ -43,6 +43,9 @@ func discardSink() *mocks.EventSinkMock {
 }
 
 // TestHelperProcess is the fake CLI. It returns immediately during a normal suite run.
+// It exits through syscall.Exit, not os.Exit: os.Exit runs Go's coverage exit hook, which under a
+// -coverpkg naming no dependency of this package writes "program not built with -cover" to this
+// child's stderr and corrupts the fixture the spawning test asserts on.
 func TestHelperProcess(t *testing.T) {
 	idx := slices.Index(os.Args, "--")
 	if idx < 0 || idx+2 >= len(os.Args) {
@@ -53,29 +56,29 @@ func TestHelperProcess(t *testing.T) {
 	switch mode {
 	case "env":
 		fmt.Print(strings.Join(os.Environ(), "\n"))
-		os.Exit(0)
+		syscall.Exit(0)
 	case "echo":
 		_, _ = io.Copy(os.Stdout, os.Stdin)
-		os.Exit(0)
+		syscall.Exit(0)
 	}
 
 	if idx+3 < len(os.Args) {
 		errData, err := os.ReadFile(os.Args[idx+3]) //nolint:gosec // the path is built by the test that spawned this
 		if err != nil {
-			os.Exit(1)
+			syscall.Exit(1)
 		}
 		if _, err := os.Stderr.Write(errData); err != nil {
-			os.Exit(1)
+			syscall.Exit(1)
 		}
 	}
 
 	data, err := os.ReadFile(path) //nolint:gosec // the path is built by the test that spawned this
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		syscall.Exit(1)
 	}
 	if _, err := os.Stdout.Write(data); err != nil {
-		os.Exit(1)
+		syscall.Exit(1)
 	}
 
 	switch mode {
@@ -85,9 +88,9 @@ func TestHelperProcess(t *testing.T) {
 		signal.Ignore(syscall.SIGTERM)
 		time.Sleep(time.Minute)
 	case "fail":
-		os.Exit(3)
+		syscall.Exit(3)
 	}
-	os.Exit(0)
+	syscall.Exit(0)
 }
 
 func TestClaude_Run_scrubsChildEnv(t *testing.T) {
