@@ -109,6 +109,12 @@ func (s *synthesizer) dispatch(ctx context.Context, stage *prompt.Stage, text st
 		if ctx.Err() != nil || n == maxAttempts-1 {
 			break
 		}
+		if next, ok := applyQuotaFallback(spec, res, fault); ok {
+			spec = next
+			req.Model, req.Effort = next.Model, next.Effort
+			s.emit(Event{Kind: EventAgentRetried, Agent: stageSynthesis, Text: "quota exhausted; retrying on cursor"})
+			continue
+		}
 		s.emit(Event{Kind: EventAgentRetried, Agent: stageSynthesis, Text: fault.Error()})
 	}
 	return executor.Result{}, fmt.Errorf("synthesis stage: %w", fault)

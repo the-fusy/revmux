@@ -220,6 +220,53 @@ func TestFinder_runAgent(t *testing.T) {
 	})
 }
 
+func TestFinder_quotaFallsBackToCursor(t *testing.T) {
+	h := newHarness(t)
+	var specs []RunnerSpec
+	var attempts atomic.Int64
+	h.cfg.NewRunner = func(spec RunnerSpec) Runner {
+		specs = append(specs, spec)
+		return &mocks.RunnerMock{RunFunc: func(context.Context, executor.Request, executor.EventSink) (executor.Result, error) {
+			if attempts.Add(1) == 1 {
+				return executor.Result{RateLimited: true, RateLimit: executor.RateLimitInfo{Status: "rejected"}}, nil
+			}
+			return executor.Result{StructuredOutput: findingsJSON(
+				`{"file":"a.go","line":1,"severity":"major","confidence":85,"title":"on cursor"}`),
+				ActualModel: "Claude Opus 5 300K High"}, nil
+		}}
+	}
+
+	res := h.finder(func(Event) {}).runAgent(context.Background(), h.cfg.Roster[0], 0)
+	require.True(t, res.ok())
+	require.Len(t, specs, 2)
+	assert.Equal(t, "claude", specs[0].Executor)
+	assert.Equal(t, "opus", specs[0].Model)
+	assert.Equal(t, "cursor", specs[1].Executor)
+	assert.Equal(t, "claude-opus-5-thinking", specs[1].Model)
+	assert.Equal(t, "cursor", res.stat.Executor)
+	assert.Equal(t, "on cursor", res.findings[0].Title)
+}
+
+func TestFinder_cursorQuotaDoesNotSwitchExecutor(t *testing.T) {
+	h := newHarness(t)
+	spec := h.cfg.Roster[0]
+	spec.Executor = "cursor"
+	spec.Model = "cursor-grok-4.6"
+	var specs []RunnerSpec
+	h.cfg.NewRunner = func(s RunnerSpec) Runner {
+		specs = append(specs, s)
+		return &mocks.RunnerMock{RunFunc: func(context.Context, executor.Request, executor.EventSink) (executor.Result, error) {
+			return executor.Result{RateLimited: true, RateLimit: executor.RateLimitInfo{Status: "rejected"}}, nil
+		}}
+	}
+
+	res := h.finder(func(Event) {}).runAgent(context.Background(), spec, 0)
+	require.False(t, res.ok())
+	for _, s := range specs {
+		assert.Equal(t, "cursor", s.Executor)
+	}
+}
+
 func TestFinder_retry(t *testing.T) {
 	tests := []struct {
 		name  string

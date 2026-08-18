@@ -118,6 +118,7 @@ func (f *finder) runAgent(ctx context.Context, spec prompt.AgentSpec, index int)
 	for opts.n = 0; opts.n < maxAttempts; opts.n++ {
 		result, runErr := f.attempt(ctx, opts)
 		res.stat.Tokens += result.Tokens
+		res.stat.Executor = opts.spec.Executor
 		if result.ActualModel != "" {
 			res.stat.ActualModel = result.ActualModel
 		}
@@ -125,6 +126,11 @@ func (f *finder) runAgent(ctx context.Context, spec prompt.AgentSpec, index int)
 		if fault = f.fault(spec, result, runErr); fault != nil {
 			if ctx.Err() != nil || opts.n == maxAttempts-1 {
 				break
+			}
+			if next, ok := applyQuotaFallbackSpec(opts.spec, result, fault); ok {
+				opts.spec = next
+				f.emit(Event{Kind: EventAgentRetried, Agent: spec.Name, Text: "quota exhausted; retrying on cursor"})
+				continue
 			}
 			f.emit(Event{Kind: EventAgentRetried, Agent: spec.Name, Text: fault.Error()})
 			continue
