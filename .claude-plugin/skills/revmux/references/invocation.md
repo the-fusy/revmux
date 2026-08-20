@@ -570,7 +570,9 @@ and authenticated:
 - `claude` — every lens agent and both model stages run on it by default
 - `codex` — needed when a profile, a roster entry or a stage names it in its `model:`
 - `cursor-agent` — needed when a roster entry or stage names it, and it is the retry target when a
-  claude or codex meter is spent. `preflight.sh <profile>` answers it for the profile that will actually run
+  claude, codex or grok meter is spent, and when a grok-named agent runs with `spend-grok` off
+- `grok` — needed when a roster entry or stage names it *and* `spend-grok` is on (default off).
+  `preflight.sh <profile>` answers it for the profile that will actually run
 
 `ANTHROPIC_API_KEY` is stripped from the child environment by default so `claude` uses interactive
 subscription auth; `--preserve-anthropic-api-key` passes it through for key-based auth. `CLAUDECODE`
@@ -612,6 +614,10 @@ These also read from the config file, under the same name as the flag:
 | `--tasks-dir=<dir>` | `tasks-dir` | `./.revmux/tasks` | root directory holding task directories |
 | `--auto-exit=<d>` | `auto-exit` | `0s` | close the TUI this long after the report arrives; `0` waits for the reader to quit with `q` or `ctrl+c` |
 | `--profile=<name>` | `profile` | `comprehensive` | profile naming the roster to run |
+| `--spend-grok=true|false` | `spend-grok` | `false` | run grok-named agents on the grok CLI; off rewrites them onto cursor-agent |
+| `--spend-claude=true|false` | `spend-claude` | `true` | allow spawning claude |
+| `--spend-codex=true|false` | `spend-codex` | `true` | allow spawning codex |
+| `--spend-cursor=true|false` | `spend-cursor` | `true` | allow spawning cursor-agent, including as the quota fallback |
 
 `--task` and `--run` are not config keys: a config file naming the round to write would make the same
 command review different context in different directories.

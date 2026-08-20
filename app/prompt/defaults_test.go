@@ -361,7 +361,7 @@ func TestDefaults_LensesStayExecutorAgnostic(t *testing.T) {
 		body, err := set.lens(l.Name)
 		require.NoError(t, err)
 		lower := strings.ToLower(body)
-		for _, banned := range []string{"json", "schema", "claude", "codex"} {
+		for _, banned := range []string{"json", "schema", "claude", "codex", "cursor-agent", "grok"} {
 			assert.NotContains(t, lower, banned,
 				"lens %s must not carry an output contract or name a binary", l.Name)
 		}

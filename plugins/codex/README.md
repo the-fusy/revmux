@@ -19,7 +19,8 @@ conventions.
 - `codex` — needed by any profile, roster entry or stage naming it in a `model:`. `preflight.sh <profile>`
   answers it for the profile that will run
 - `cursor-agent` — needed when a roster entry or stage names it, and it is the retry target when a
-  claude or codex meter is spent
+  claude, codex or grok meter is spent
+- `grok` — needed when a roster entry or stage names it and `spend-grok` is on
 - `jq` — optional. `preflight.sh` and `task-state.sh` use it when present and fall back without it
 - `python3` — for `analyze-corpus.py` only, which self mode runs. Standard library alone, no packages
 - a supported terminal, for overlay mode only: agterm, tmux, Zellij, herdr, kitty, wezterm, cmux,

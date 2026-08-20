@@ -256,6 +256,55 @@ func TestFinder_quotaFallsBackToCursor(t *testing.T) {
 		"a rewritten archive must not still carry the failed binary's contract")
 }
 
+func TestFinder_spendGrokOffRewritesOntoCursor(t *testing.T) {
+	h := newHarness(t)
+	h.cfg.Spend = &Spend{Claude: true, Codex: true, Cursor: true, Grok: false}
+	spec := h.cfg.Roster[0]
+	spec.Executor = "grok"
+	spec.Model = "grok-4.6"
+	var specs []RunnerSpec
+	h.cfg.NewRunner = func(s RunnerSpec) Runner {
+		specs = append(specs, s)
+		return &mocks.RunnerMock{RunFunc: func(context.Context, executor.Request, executor.EventSink) (executor.Result, error) {
+			return executor.Result{StructuredOutput: findingsJSON(
+				`{"file":"a.go","line":1,"severity":"major","confidence":85,"title":"via cursor"}`)}, nil
+		}}
+	}
+
+	res := h.finder(func(Event) {}).runAgent(context.Background(), spec, 0)
+	require.True(t, res.ok())
+	require.Len(t, specs, 1)
+	assert.Equal(t, "cursor-agent", specs[0].Executor)
+	assert.Equal(t, "cursor-grok-4.6", specs[0].Model)
+	assert.Equal(t, "cursor-agent", res.stat.Executor)
+	archived := h.get("prompts/agents/bugs.md")
+	require.NotNil(t, archived)
+	assert.Contains(t, archived.String(), executor.CursorOutputContract(finding.FinderSchema()))
+	assert.NotContains(t, archived.String(), executor.ClaudeNarrationContract(finding.FinderSchema()))
+}
+
+func TestFinder_spendGrokOnKeepsGrok(t *testing.T) {
+	h := newHarness(t)
+	h.cfg.Spend = &Spend{Claude: true, Codex: true, Cursor: true, Grok: true}
+	spec := h.cfg.Roster[0]
+	spec.Executor = "grok"
+	spec.Model = "grok-4.6"
+	var specs []RunnerSpec
+	h.cfg.NewRunner = func(s RunnerSpec) Runner {
+		specs = append(specs, s)
+		return &mocks.RunnerMock{RunFunc: func(context.Context, executor.Request, executor.EventSink) (executor.Result, error) {
+			return executor.Result{StructuredOutput: findingsJSON(
+				`{"file":"a.go","line":1,"severity":"major","confidence":85,"title":"on grok"}`)}, nil
+		}}
+	}
+
+	res := h.finder(func(Event) {}).runAgent(context.Background(), spec, 0)
+	require.True(t, res.ok())
+	require.Len(t, specs, 1)
+	assert.Equal(t, "grok", specs[0].Executor)
+	assert.Equal(t, "grok", res.stat.Executor)
+}
+
 func TestFinder_stallWithQuotaPhraseDoesNotSwitchExecutor(t *testing.T) {
 	h := newHarness(t)
 	var specs []RunnerSpec

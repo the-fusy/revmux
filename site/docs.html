@@ -224,7 +224,9 @@ make install      <span class="c-dim"># and symlinks it to /usr/local/bin/revmux
           <li>
             <code>comprehensive</code>, <code>focused</code>, <code>final</code>, <code>grill-me</code>,
             <code>triage</code>, <code>expert</code>: a claude roster plus a codex peer. A spent meter
-            retries that entry on <code>cursor-agent</code>
+            retries that entry on <code>cursor-agent</code>. A profile that names <code>grok</code> runs
+            the grok CLI only with <code>--spend-grok</code>; otherwise those agents run on
+            <code>cursor-agent</code>
           </li>
         </ul>
         <p>
@@ -766,6 +768,10 @@ receives, including what counts as critical, major and minor here.</pre>
               <tr><td>--tasks-dir</td><td>./.revmux/tasks</td><td class="prose">root directory holding task directories</td></tr>
               <tr><td>--auto-exit</td><td>0s</td><td class="prose">close the terminal UI this long after the report arrives; 0 never closes it</td></tr>
               <tr><td>--profile</td><td>comprehensive</td><td class="prose">profile naming the roster to run</td></tr>
+              <tr><td>--spend-grok=true|false</td><td>false</td><td class="prose">run grok-named agents on the grok CLI; off rewrites them onto cursor-agent</td></tr>
+              <tr><td>--spend-claude=true|false</td><td>true</td><td class="prose">allow spawning claude</td></tr>
+              <tr><td>--spend-codex=true|false</td><td>true</td><td class="prose">allow spawning codex</td></tr>
+              <tr><td>--spend-cursor=true|false</td><td>true</td><td class="prose">allow spawning cursor-agent, including as the quota fallback</td></tr>
             </tbody>
           </table>
         </div>
@@ -1043,7 +1049,7 @@ receives, including what counts as critical, major and minor here.</pre>
                 "roster": [...], "stages": [...]}],
   "lenses": [{"name": "adversarial", "description": "..."}],
   "stages": [{"name": "synthesis", "description": "..."}],
-  "vocabulary": {"executors": ["claude", "codex"],
+  "vocabulary": {"executors": ["claude", "codex", "cursor-agent", "grok"],
                  "efforts": ["low", "medium", "high", "xhigh", "max"]},
   "paths": {
     "tasks_dir": "/abs/project/.revmux/tasks",

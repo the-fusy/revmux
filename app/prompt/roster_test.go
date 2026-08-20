@@ -499,7 +499,7 @@ func TestStage_FrontMatter(t *testing.T) {
 
 func TestVocabularies(t *testing.T) {
 	assert.Equal(t, []string{"low", "medium", "high", "xhigh", "max"}, Efforts())
-	assert.Equal(t, []string{"claude", "codex", "cursor-agent"}, Executors())
+	assert.Equal(t, []string{"claude", "codex", "cursor-agent", "grok"}, Executors())
 
 	Efforts()[0] = "mutated"
 	Executors()[0] = "mutated"

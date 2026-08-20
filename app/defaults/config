@@ -33,3 +33,15 @@
 
 # profile naming the roster to run
 # profile = comprehensive
+
+# run grok-named agents on the grok CLI; off rewrites them onto cursor-agent
+# spend-grok = false
+
+# allow spawning claude
+# spend-claude = true
+
+# allow spawning codex
+# spend-codex = true
+
+# allow spawning cursor-agent, including as the quota fallback
+# spend-cursor = true

@@ -1,7 +1,7 @@
 # revmux — project notes
 
-revmux runs a structured multi-agent code review by spawning and supervising `claude --print` and
-`codex exec` subprocesses, then returns findings.
+revmux runs a structured multi-agent code review by spawning and supervising `claude --print`,
+`codex exec`, `cursor-agent --print` and `grok` subprocesses, then returns findings.
 It exists because agent fan-out driven from inside an AI coding session is unobservable and unrecoverable:
 agents go silent for minutes, sometimes never return, and the caller has no timeout, no kill, no retry and no progress.
 

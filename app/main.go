@@ -25,10 +25,11 @@ import (
 
 var revision = "unknown"
 
-// executorCodex and executorCursor are the roster binaries that are not claude, which is the default.
+// executorCodex, executorCursor and executorGrok are the roster binaries that are not claude, which is the default.
 const (
 	executorCodex  = "codex"
 	executorCursor = "cursor-agent"
+	executorGrok   = "grok"
 )
 
 // runOpts is what run needs from its surroundings. Every one of them is injected so the whole entry
@@ -206,6 +207,7 @@ func (o runOpts) pipelineConfig() (configuredReview, error) {
 		NoSynthesis: o.opts.NoSynthesis, NoVerify: o.opts.NoVerify,
 		StaggerDelay: o.opts.StaggerDelay, MaxParallel: o.opts.MaxParallel,
 		VerifyGroups: o.opts.VerifyGroups, VerifyGroupBy: o.opts.VerifyGroupBy,
+		Spend: o.opts.spendPolicy(),
 	}
 	return configuredReview{pipeline: cfg, archive: arc, context: rc}, nil
 }
@@ -356,6 +358,17 @@ func (o runOpts) tty() *os.File {
 	return f
 }
 
+// spendPolicy is the spawn gate a review uses. Empty fields — tests constructing options without
+// parseArgs — take the same defaults parseArgs would have applied: grok off, the rest on.
+func (o options) spendPolicy() *pipeline.Spend {
+	return &pipeline.Spend{
+		Claude: o.SpendClaude != "false",
+		Codex:  o.SpendCodex != "false",
+		Cursor: o.SpendCursor != "false",
+		Grok:   o.SpendGrok == "true",
+	}
+}
+
 // runnerFactory builds the per-spec executor factory. A caller-supplied one wins, so a test drives
 // the whole slice without spawning a model CLI. The executors are built once and shared: each holds
 // immutable configuration only, and the roster runs them concurrently.
@@ -365,13 +378,15 @@ func (o runOpts) runnerFactory(rc reviewContext) func(pipeline.RunnerSpec) pipel
 	}
 	runner, eo := executor.NewRunner(), o.opts.executorOpts(rc, o.clock)
 	claude, codex := executor.NewClaude(runner, eo), executor.NewCodex(runner, eo)
-	cursor := executor.NewCursor(runner, eo)
+	cursor, grok := executor.NewCursor(runner, eo), executor.NewGrok(runner, eo)
 	return func(spec pipeline.RunnerSpec) pipeline.Runner {
 		switch spec.Executor {
 		case executorCodex:
 			return codex
 		case executorCursor:
 			return cursor
+		case executorGrok:
+			return grok
 		default:
 			return claude
 		}

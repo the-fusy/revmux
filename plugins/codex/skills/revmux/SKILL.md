@@ -12,8 +12,8 @@ description: >
 
 # revmux — supervised multi-agent code review
 
-revmux spawns and supervises parallel `claude --print`, `codex exec` and `cursor-agent --print`
-subprocesses, watches each for stalls, retries what hangs, and returns findings on stdout.
+revmux spawns and supervises parallel `claude --print`, `codex exec`, `cursor-agent --print` and
+`grok` subprocesses, watches each for stalls, retries what hangs, and returns findings on stdout.
 
 It does no scope detection, no git, no PR fetching, no source modification. This skill does that half.
 
@@ -312,7 +312,8 @@ fails the run.
 | last, pre-merge, before merge, strict | `final` |
 | claude only, no codex, skip codex | a user profile whose `model:` is `claude` — there is no shipped single-binary profile |
 | codex only, no claude, codex alone | a user profile whose `model:` is `codex` — there is no shipped single-binary profile |
-| cursor, grok, cursor-agent | a user profile whose `model:` is `cursor-agent` |
+| cursor, cursor-agent | a user profile whose `model:` is `cursor-agent` |
+| grok, grok cli | a user profile whose `model:` is `grok`, and `--spend-grok` so those agents run the grok CLI rather than cursor-agent |
 | grill me, tear it apart, be brutal, no mercy, adversarial | `grill-me` |
 | expert, best models, highest effort, spare no expense, use sol and fable | `expert` — and only on words like these, never inferred from the subject |
 | triage this, is this worth doing, should we accept this, should I close this | `triage`, and the subject is a filed item rather than a diff — `references/triage.md`, which owns the flags it needs |

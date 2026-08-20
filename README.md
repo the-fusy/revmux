@@ -4,8 +4,8 @@
 
 **[revmux.com](https://revmux.com)** · [Documentation](https://revmux.com/docs) · [Reference](https://revmux.com/reference) · [Releases](https://github.com/umputun/revmux/releases)
 
-revmux runs a structured multi-agent review. It spawns and supervises `claude --print` and `codex exec`
-subprocesses, then returns findings on stdout as JSON or markdown.
+revmux runs a structured multi-agent review. It spawns and supervises `claude --print`, `codex exec`,
+`cursor-agent --print` and `grok` subprocesses, then returns findings on stdout as JSON or markdown.
 
 **It is normally launched by a coding agent rather than typed by you.** The [shipped skill](#agent-skills)
 works out what is under review, writes the context to disk, runs revmux and reads the report back. To that
@@ -99,9 +99,10 @@ either, ask for a review in words: revmux this branch, revmux pr 123, re-review 
 [Agent skills](#agent-skills) for what it does.
 
 revmux drives the model CLIs as subprocesses, so whichever ones your profile names must already be installed
-and authenticated: `claude`, `codex` and `cursor-agent` as the roster requires. A spent claude or
-codex meter retries that entry on `cursor-agent`. `preflight.sh` in the shipped skill answers it for any
-profile and any invocation.
+and authenticated: `claude`, `codex`, `cursor-agent` and `grok` as the roster requires. A spent claude,
+codex or grok meter retries that entry on `cursor-agent`. A profile that names `grok` runs the grok CLI
+only when `spend-grok` is on (off by default); otherwise those agents run on `cursor-agent`.
+`preflight.sh` in the shipped skill answers it for any profile and any invocation.
 
 `ANTHROPIC_API_KEY` is stripped from the child environment by default so `claude` uses interactive
 subscription auth; pass `--preserve-anthropic-api-key` if you authenticate by key.
@@ -262,7 +263,7 @@ codex mix inside one review.
 | `expert` | two agents at the highest effort, each carrying all eight code lenses |
 | `triage` | a four-way panel over a filed item rather than a diff |
 
-**The six are starting points, not the menu.** A single-binary host writes a user profile whose `model:` is `claude`, `codex` or `cursor-agent` — there is no shipped one-binary roster. A profile is a file under `prompts/profiles/`, so dropping
+**The six are starting points, not the menu.** A single-binary host writes a user profile whose `model:` is `claude`, `codex`, `cursor-agent` or `grok` — there is no shipped one-binary roster. A profile is a file under `prompts/profiles/`, so dropping
 `.revmux/prompts/profiles/release.md` into a project makes `--profile release` work with no registration step
 anywhere. Its roster can be as wide as you are willing to pay for, each entry carries whatever lenses the job
 needs, and any entry can leave the profile's model for its own. Lenses resolve the same way, so a roster

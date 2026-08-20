@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # preflight.sh - verify revmux and the model CLIs a profile actually needs.
 #
-# revmux drives `claude` and `codex` as subprocesses, so a missing binary is a run that
-# starts, launches agents, and degrades every source before failing with exit 2. Checking
-# first turns that into one line of output.
+# revmux drives `claude`, `codex`, `cursor-agent` and `grok` as subprocesses, so a missing
+# binary is a run that starts, launches agents, and degrades every source before failing
+# with exit 2. Checking first turns that into one line of output.
 #
 # which binaries are needed depends on the resolved profile, not on a fixed list: a profile, a
 # roster entry or a stage names one in its `model:`, and a user override can change that. The
@@ -133,7 +133,54 @@ else
     exit 1
 fi
 
+# spend knobs rewrite which binary actually launches. A grok-named agent with spend-grok off
+# (the default) runs on cursor-agent; the same for a disabled claude/codex. Checking the
+# authored name would fail a host that can run the review and pass one that cannot.
+spend_on() {
+    val=$(printf '%s' "$cfg" | jq -r --arg n "$1" '(.knobs[] | select(.name == $n) | .value | tostring) // empty')
+    case "$1" in
+        spend-grok)
+            [ "$val" = "true" ] && echo true || echo false
+            ;;
+        *)
+            [ "$val" = "false" ] && echo false || echo true
+            ;;
+    esac
+}
+
+need_bin() {
+    exe=$1
+    knob=""
+    case "$exe" in
+        claude) knob=spend-claude ;;
+        codex) knob=spend-codex ;;
+        grok) knob=spend-grok ;;
+        cursor-agent) knob=spend-cursor ;;
+        *)
+            echo "$exe"
+            return
+            ;;
+    esac
+    if [ "$(spend_on "$knob")" = true ]; then
+        echo "$exe"
+        return
+    fi
+    if [ "$exe" != cursor-agent ] && [ "$(spend_on spend-cursor)" = true ]; then
+        echo cursor-agent
+    fi
+}
+
+needed=""
 for exe in $executors; do
+    mapped=$(need_bin "$exe")
+    [ -z "$mapped" ] && continue
+    case " $needed " in
+        *" $mapped "*) ;;
+        *) needed="$needed $mapped" ;;
+    esac
+done
+
+for exe in $needed; do
     if command -v "$exe" >/dev/null 2>&1; then
         echo "$exe: $(command -v "$exe")"
     else

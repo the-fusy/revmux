@@ -115,6 +115,11 @@ type Config struct {
 	MaxParallel   int
 	VerifyGroups  int
 	VerifyGroupBy string // "dir", the default, or "source" to key verifier groups by the agent that raised the finding
+
+	// Spend is which binaries may actually be spawned. Nil means do not rewrite (tests). Production
+	// always sets it: grok-named agents run on the grok CLI only when Spend.Grok is true, otherwise
+	// they are rewritten onto cursor-agent, the same substitute a spent claude/codex meter uses.
+	Spend *Spend
 }
 
 // Pipeline runs one review. Run is a thin stage orchestrator: the stages own their own logic so no

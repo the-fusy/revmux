@@ -19,10 +19,12 @@ import (
 
 // executorCodex names the one roster executor whose output is prose rather than stream-json, so its
 // verbatim tee gets a different extension. executorCursor is the third binary; archivedPrompt
-// needs it so a cursor prompt is not stored as Claude's narration contract.
+// needs it so a cursor prompt is not stored as Claude's narration contract. executorGrok shares
+// Claude's narration contract and json-schema, but is its own binary.
 const (
 	executorCodex  = "codex"
 	executorCursor = "cursor-agent"
+	executorGrok   = "grok"
 )
 
 // maxAttempts is one launch plus one retry. A second failure degrades the source and the run
@@ -99,6 +101,13 @@ func (f *finder) runAgent(ctx context.Context, spec prompt.AgentSpec, index int)
 	if err != nil {
 		return f.degrade(res, err)
 	}
+	if next, ok := applySpendSpec(f.cfg.Spend, spec); ok {
+		spec = next
+		res.stat.Executor, res.stat.RequestedModel, res.stat.Effort = spec.Executor, spec.Model, spec.Effort
+	}
+	if f.cfg.Spend != nil && !f.cfg.Spend.allowed(spec.Executor) {
+		return f.degrade(res, fmt.Errorf("executor %s is disabled", spec.Executor))
+	}
 	// archived post-substitution, exactly the bytes the process receives — the codex output contract
 	// included: a reflection agent cannot judge a lens it cannot read, and a paraphrase is worse than
 	// no data
@@ -128,7 +137,7 @@ func (f *finder) runAgent(ctx context.Context, spec prompt.AgentSpec, index int)
 			if ctx.Err() != nil || opts.n == maxAttempts-1 {
 				break
 			}
-			if next, ok := applyQuotaFallbackSpec(opts.spec, result, fault); ok {
+			if next, ok := applyQuotaFallbackSpec(f.cfg.Spend, opts.spec, result, fault); ok {
 				opts.spec = next
 				f.save(f.promptName(spec), []byte(archivedPrompt(next.Executor, text, finding.FinderSchema())))
 				f.emit(Event{Kind: EventAgentRetried, Agent: spec.Name, Text: "quota exhausted; retrying on cursor"})

@@ -1056,6 +1056,7 @@ func TestRunOpts_runnerFactory(t *testing.T) {
 			{"claude", pipeline.RunnerSpec{Executor: "claude"}, &executor.Claude{}},
 			{"codex", pipeline.RunnerSpec{Executor: "codex"}, &executor.Codex{}},
 			{"cursor-agent", pipeline.RunnerSpec{Executor: "cursor-agent"}, &executor.Cursor{}},
+			{"grok", pipeline.RunnerSpec{Executor: "grok"}, &executor.Grok{}},
 			{"empty defaults to claude", pipeline.RunnerSpec{}, &executor.Claude{}},
 		}
 

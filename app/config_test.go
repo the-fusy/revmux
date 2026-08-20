@@ -39,6 +39,30 @@ func TestParseArgs_defaults(t *testing.T) {
 	assert.Equal(t, "./.revmux/tasks", o.TasksDir)
 	assert.Equal(t, "comprehensive", o.Profile)
 	assert.Equal(t, 0, o.MinConfidence)
+	assert.Equal(t, "false", o.SpendGrok, "grok CLI is opt-in; a profile that names grok otherwise runs on cursor-agent")
+	assert.Equal(t, "true", o.SpendClaude)
+	assert.Equal(t, "true", o.SpendCodex)
+	assert.Equal(t, "true", o.SpendCursor)
+}
+
+func TestParseArgs_spendFlags(t *testing.T) {
+	dir := isolate(t)
+	user := filepath.Join(dir, "user")
+
+	t.Run("CLI turns claude off", func(t *testing.T) {
+		o, err := parseArgs([]string{"--task", "pr-1", "--config-dir", user, "--spend-claude=false"})
+		require.NoError(t, err)
+		assert.Equal(t, "false", o.SpendClaude)
+		assert.Equal(t, originFlag, o.knobOrigins["spend-claude"])
+	})
+
+	t.Run("INI turns grok on", func(t *testing.T) {
+		writeConfig(t, user, "spend-grok = true\n")
+		o, err := parseArgs([]string{"--task", "pr-1", "--config-dir", user})
+		require.NoError(t, err)
+		assert.Equal(t, "true", o.SpendGrok)
+		assert.Equal(t, originUser, o.knobOrigins["spend-grok"])
+	})
 }
 
 func TestParseArgs_cleanInstallHasNoZeroKnob(t *testing.T) {
@@ -150,6 +174,10 @@ func TestParseArgs_knobOriginsNameTheWinningLayer(t *testing.T) {
 		"tasks-dir":       originDefault,
 		"auto-exit":       originDefault,
 		"verify-group-by": originDefault,
+		"spend-grok":      originDefault,
+		"spend-claude":    originDefault,
+		"spend-codex":     originDefault,
+		"spend-cursor":    originDefault,
 	}
 	assert.Equal(t, want, o.knobOrigins)
 	assert.Len(t, o.knobOrigins, len(knobNames()), "every knob reports an origin")
@@ -305,7 +333,8 @@ func TestKnobNames_iniNameMatchesLongName(t *testing.T) {
 		assert.NotEmpty(t, f.Tag.Get("default"), "field %s: a knob with no default resolves to a zero value", f.Name)
 	}
 	assert.Equal(t, []string{"idle-timeout", "hard-timeout", "stagger-delay", "max-parallel",
-		"verify-groups", "verify-group-by", "tasks-dir", "auto-exit", "profile"}, knobNames())
+		"verify-groups", "verify-group-by", "tasks-dir", "auto-exit", "profile",
+		"spend-grok", "spend-claude", "spend-codex", "spend-cursor"}, knobNames())
 }
 
 func TestResolveContext_shapes(t *testing.T) {
