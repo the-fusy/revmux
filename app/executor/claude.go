@@ -64,6 +64,10 @@ func ClaudeNarrationContract(schema json.RawMessage) string {
 // after it is complete, so a large answer puts the stream past the idle timeout with the agent working —
 // measured killing synthesis twice at 120s while it merged 39 findings. The deltas are the only liveness
 // there is in that window; the narration contract cannot reach into a tool call the model is composing.
+//
+// --print writes a transcript under ~/.claude/projects/ by default. Do not pass
+// --no-session-persistence: ccusage and /resume both read that store, and a review launched from any
+// harness has to land in the same history as an interactive session in the same cwd.
 func (c *Claude) args(req Request) []string {
 	argv := []string{
 		"--print",
@@ -72,7 +76,6 @@ func (c *Claude) args(req Request) []string {
 		"--permission-mode", "auto",
 		"--disallowedTools", "Edit,Write",
 		"--disable-slash-commands",
-		"--no-session-persistence",
 		"--include-partial-messages",
 	}
 	if req.Model != "" {

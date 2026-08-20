@@ -61,7 +61,6 @@ claude --print --output-format stream-json --verbose
        --permission-mode auto
        --disallowedTools "Edit,Write"
        --disable-slash-commands
-       --no-session-persistence
        --include-partial-messages
        --json-schema <findings schema>
        < prompt
@@ -88,7 +87,15 @@ claude --print --output-format stream-json --verbose
 - `--disable-slash-commands` prevents a lens agent invoking a skill that spawns its own subagent,
   which would put an agent inside the agent.
   The call site cannot prevent that any other way — it is a property of the invoked skill, not of the caller.
-- `--no-session-persistence` avoids leaving one saved transcript per lens per run.
+- **Do not pass `--no-session-persistence`.**
+  `--print` writes a transcript under `~/.claude/projects/<cwd>/` unless that flag is set, and that is
+  the store `ccusage` and `/resume` both read.
+  A review launched from grok, Claude Code, Cursor or Codex has to land in the same project history as
+  an interactive session in that directory, or the quota spent on finders is invisible next to the
+  session that launched them.
+  One file per lens per run is the cost; the alternative is a review that never appears in usage.
+  Codex `exec` and `cursor-agent --print` already persist by default and have no equivalent opt-out
+  on the flags we pass, so this is the claude-only hole.
 - **`--include-partial-messages` is armour for the idle watchdog, not something revmux decodes.**
   Without it the `StructuredOutput` tool call reaches stdout as a single line written only once it is
   complete, so a large answer means minutes with no byte on either pipe while the agent is working —

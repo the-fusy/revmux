@@ -104,7 +104,6 @@ func TestClaude_args(t *testing.T) {
 		"--permission-mode", "auto",
 		"--disallowedTools", "Edit,Write",
 		"--disable-slash-commands",
-		"--no-session-persistence",
 		"--include-partial-messages",
 		"--model", "opus",
 		"--effort", "high",
@@ -112,6 +111,8 @@ func TestClaude_args(t *testing.T) {
 	}
 	assert.Equal(t, want, call.Args)
 	assert.NotContains(t, call.Args, "--bare", "--bare forces api-key auth and drops project instructions")
+	assert.NotContains(t, call.Args, "--no-session-persistence",
+		"transcripts stay in ~/.claude/projects/ so ccusage can see review quota")
 }
 
 func TestClaude_args_optionalFlagsOmitted(t *testing.T) {
