@@ -129,8 +129,9 @@
           <h1>revmux</h1>
           <p class="lede">
             A supervised multi-agent review, normally launched by your coding agent rather than typed by you.
-            revmux spawns <code>claude --print</code> and <code>codex exec</code> subprocesses, watches them,
-            and returns findings on stdout as JSON or markdown.
+            revmux spawns <code>claude --print</code>, <code>codex exec</code>,
+            <code>cursor-agent --print</code> and <code>grok</code> subprocesses,
+            watches them, and returns findings on stdout as JSON or markdown.
           </p>
         </div>
 
@@ -561,7 +562,8 @@ agents:
         <h3>The model string</h3>
         <p>
           One <code>model</code> string selects the binary, the model and the effort together. The binary leads
-          and is mandatory, either <code>claude</code> or <code>codex</code>, so a value validates itself and
+          and is mandatory: <code>claude</code>, <code>codex</code>, <code>cursor-agent</code> or
+          <code>grok</code>. A value validates itself and
           revmux never has to guess which CLI runs <code>gpt-5.6-sol</code> from a catalog of model names that
           would go stale.
         </p>
@@ -652,7 +654,7 @@ codex:high               codex's default model at high effort</pre>
         </p>
         <h3>Writing your own</h3>
         <p>
-          The eight are starting points, not the menu. A profile is a file under
+          The six are starting points, not the menu. A profile is a file under
           <code>prompts/profiles/</code> in any of the three layers, so dropping
           <code>.revmux/prompts/profiles/release.md</code> into a project makes
           <code>--profile release</code> work, with no registration step anywhere. The same is true of lenses:
@@ -697,8 +699,8 @@ receives, including what counts as critical, major and minor here.</pre>
           selects which binary runs it. There is no codex-specific prompt file: codex is an entry whose
           <code>model:</code> names it, composing <code>lenses/adversarial.md</code>, so the adversarial lens
           runs on claude by changing one word and <code>bugs</code> runs on codex the same way. Lens text stays
-          executor-agnostic, and the output-contract difference (claude has <code>--json-schema</code>, codex
-          does not) is injected by the executor.
+          executor-agnostic, and the output-contract difference (claude and grok have
+          <code>--json-schema</code>; codex and cursor-agent do not) is injected by the executor.
         </p>
         <div class="scroll-x">
           <table class="tbl">

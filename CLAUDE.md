@@ -60,7 +60,7 @@ If a note would be equally true of any Go project, it does not belong here.
 - `app/artifacts.go` — the artifacts `package main` owns: `manifest.json`, `report.md`, `findings.json`
 - `app/progress.go` — the non-TTY event subscriber (timestamped lines to stderr), plus the run's closing
   summary, which the pipeline emits no event for
-- `app/executor/` — supervised subprocess execution for claude and codex
+- `app/executor/` — supervised subprocess execution for claude, codex, cursor-agent and grok
 - `app/prompt/` — front matter and roster parsing, lens composition, `{{VAR}}` substitution, `go:embed` defaults
 - `app/pipeline/` — the three stages, fan-out, stagger, degrade policy, typed event channel
 - `app/finding/` — `Finding` and `Report` types, the per-stage JSON schemas, markdown and JSON rendering
@@ -662,7 +662,7 @@ Every animation is disabled under `prefers-reduced-motion`.
 
 Detailed per-subsystem engineering notes live in `.claude/rules/*.md`, each scoped with `paths:` frontmatter.
 
-- `.claude/rules/executor.md` — subprocess supervision, verified `claude` and `codex` CLI behavior, stream decoding
+- `.claude/rules/executor.md` — subprocess supervision and verified model-CLI behavior
 - `.claude/rules/pipeline.md` — the three-stage contract, degrade policy, stagger, event channel
 - `.claude/rules/prompts.md` — front matter, roster resolution, lens composition, config precedence
 - `.claude/rules/tui.md` — bubbletea conventions and the lipgloss/ANSI traps

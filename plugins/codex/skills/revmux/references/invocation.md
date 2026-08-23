@@ -143,7 +143,7 @@ not the session happened to be split.
 
 ### Why the launcher forwards PATH
 
-revmux spawns `claude` and `codex` itself, and overlay backends start children from a server process
+revmux spawns the selected model CLIs itself, and overlay backends start children from a server process
 whose environment predates the user's shell rc files. Without forwarding, every agent degrades on a
 binary that is plainly installed and the run exits `2`.
 
