@@ -123,6 +123,13 @@ func (c *Codex) args(req Request) []string {
 // that stage's shape. Exported because Run appends it after the caller archived the composed prompt, and
 // an archived prompt missing it describes a run that did not happen.
 func CodexOutputContract(schema json.RawMessage) string {
+	return jsonOutputContract(schema)
+}
+
+// jsonOutputContract is the shared substitute for claude's --json-schema, appended by every executor
+// that has no schema flag of its own — codex and cursor-agent. One text, two names: each stays
+// exported under its own binary so an archived prompt records which contract its run dispatched.
+func jsonOutputContract(schema json.RawMessage) string {
 	if len(schema) == 0 {
 		return ""
 	}

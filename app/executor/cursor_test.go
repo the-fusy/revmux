@@ -136,6 +136,7 @@ func TestCursor_thinkingDeltasAreCoalescedProgress(t *testing.T) {
 			activity = append(activity, call.Event.Text)
 		case executor.EventProgress:
 			progress = append(progress, call.Event.Text)
+		case executor.EventInfo, executor.EventRateLimit, executor.EventFinished:
 		}
 	}
 	assert.Empty(t, activity, "token fragments must not become log lines")
@@ -172,7 +173,7 @@ func TestCursor_Run_clean(t *testing.T) {
 	assert.Equal(t, "minor", out.Findings[0].Severity)
 	assert.Equal(t, []string{"bugs"}, out.Findings[0].Lenses)
 
-	texts := []string{}
+	texts := make([]string, 0, len(sink.EmitCalls()))
 	for _, call := range sink.EmitCalls() {
 		texts = append(texts, call.Event.Text)
 	}

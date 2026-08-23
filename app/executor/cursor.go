@@ -46,11 +46,7 @@ func (c *Cursor) Run(ctx context.Context, req Request, sink EventSink) (Result, 
 // prompt Run dispatches. Exported because Run appends it after the caller archived the composed prompt,
 // and an archived prompt missing it describes a run that did not happen.
 func CursorOutputContract(schema json.RawMessage) string {
-	if len(schema) == 0 {
-		return ""
-	}
-	return "\n\nReturn ONLY a JSON object matching the schema below. No prose before or after it.\n\nSchema:\n" +
-		string(schema) + "\n"
+	return jsonOutputContract(schema)
 }
 
 func (c *Cursor) args(req Request) []string {
@@ -98,7 +94,7 @@ func cursorModelSlug(model, effort string) string {
 // cursorSlugHasEffort reports whether a catalog id already carries an effort token, so
 // `cursor-grok-4.6-high` plus a profile `:high` is not rewritten as `...-high-high`.
 func cursorSlugHasEffort(model string) bool {
-	for _, part := range strings.Split(model, "-") {
+	for part := range strings.SplitSeq(model, "-") {
 		switch part {
 		case "low", "medium", "high", "xhigh", "max":
 			return true
@@ -143,19 +139,7 @@ func (c *Cursor) parseStream(ctx context.Context, r io.Reader, sink EventSink) R
 				think.Reset()
 			}
 		case "assistant":
-			if text := ev.activity(); text != "" {
-				// a short fragment is another token of the same thought; a longer
-				// line is the narration Claude would have put in the log
-				if len([]rune(text)) < 40 {
-					think.WriteString(" ")
-					think.WriteString(text)
-					flush(false)
-					break
-				}
-				flush(true)
-				think.Reset()
-				c.emit(sink, Event{Kind: EventActivity, Text: text})
-			}
+			c.assistant(ev, &think, flush, sink)
 		case "tool_call":
 			if ev.Subtype == "started" {
 				flush(true)
@@ -175,6 +159,24 @@ func (c *Cursor) parseStream(ctx context.Context, r io.Reader, sink EventSink) R
 		}
 	})
 	return res
+}
+
+// assistant folds short cursor fragments into the current thought and emits a longer block as
+// narration. Keeping the two shapes here leaves parseStream responsible only for event dispatch.
+func (c *Cursor) assistant(ev cursorEvent, think *strings.Builder, flush func(bool), sink EventSink) {
+	text := ev.activity()
+	if text == "" {
+		return
+	}
+	if len([]rune(text)) < 40 {
+		think.WriteString(" ")
+		think.WriteString(text)
+		flush(false)
+		return
+	}
+	flush(true)
+	think.Reset()
+	c.emit(sink, Event{Kind: EventActivity, Text: text})
 }
 
 func (c *Cursor) event(line string) (cursorEvent, bool) {
