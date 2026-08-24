@@ -110,6 +110,7 @@ func (s *synthesizer) dispatch(ctx context.Context, stage *prompt.Stage, text st
 	var tokens int
 	for n := range maxAttempts {
 		res, err := s.cfg.NewRunner(spec).Run(ctx, req, newSink(stageSynthesis, s.emit, nil))
+		emitSession(s.emit, stageSynthesis, spec.Executor, res)
 		tokens += res.Tokens
 		if fault = s.fault(res, err); fault == nil {
 			res.Tokens = tokens

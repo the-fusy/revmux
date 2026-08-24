@@ -97,6 +97,7 @@ func (c *Codex) Run(ctx context.Context, req Request, sink EventSink) (Result, e
 	<-tailDone
 	res.RequestedModel = req.Model
 	res.ActualModel = errs.model
+	res.SessionID = errs.sessionIDValue
 	res.Tokens = errs.total()
 	if err != nil {
 		return res, err
@@ -225,15 +226,16 @@ func (c *Codex) match(text string, patterns []string) string {
 // codexStderr filters one run's stderr down to what is worth keeping. It is per-run state and therefore
 // never a field on Codex, which serves the whole roster concurrently from one instance.
 type codexStderr struct {
-	emit       func(Event)
-	seen       map[string]bool
-	model      string
-	diag       string
-	tokens     int
-	wantTokens bool
-	atEnd      bool          // the accepted count is still the last thing stderr printed
-	session    chan<- string // receives the session id once the banner surfaces it, buffered, sent once
-	sentID     bool
+	emit           func(Event)
+	seen           map[string]bool
+	model          string
+	diag           string
+	sessionIDValue string
+	tokens         int
+	wantTokens     bool
+	atEnd          bool          // the accepted count is still the last thing stderr printed
+	session        chan<- string // receives the session id once the banner surfaces it, buffered, sent once
+	sentID         bool
 }
 
 func newCodexStderr(emit func(Event), session chan<- string) *codexStderr {
@@ -252,13 +254,16 @@ func (s *codexStderr) line(l string) {
 	}
 	// the id that names the rollout file, which is where codex's actual activity goes. Sent once,
 	// non-blocking, so a missing reader cannot stall the stderr drain and wedge the process.
-	if !s.sentID && s.session != nil {
+	if !s.sentID {
 		if id := s.sessionID(l); id != "" {
 			s.sentID = true
-			select {
-			case s.session <- id:
-			default:
+			if s.session != nil {
+				select {
+				case s.session <- id:
+				default:
+				}
 			}
+			s.sessionIDValue = id
 		}
 	}
 

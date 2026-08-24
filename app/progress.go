@@ -179,6 +179,9 @@ func (pr *progress) line(ev pipeline.Event) string {
 		// dropped: the done event a moment later carries the same count, and printing both puts the
 		// number on two consecutive lines
 		return ""
+	case pipeline.EventSession:
+		// archived identity for local usage accounting, not a progress line
+		return ""
 	case pipeline.EventRateLimit:
 		what = "rate limited: " + ev.Text
 	default:

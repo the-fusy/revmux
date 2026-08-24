@@ -158,6 +158,7 @@ func TestCursor_Run_clean(t *testing.T) {
 	assert.False(t, res.IdleTimedOut)
 	assert.Equal(t, "cursor-grok-4.6", res.RequestedModel)
 	assert.Equal(t, "Cursor Grok 4.6 High", res.ActualModel)
+	assert.Equal(t, "s1", res.SessionID)
 	assert.Equal(t, 13400, res.Tokens)
 
 	var out struct {

@@ -115,6 +115,7 @@ func TestGrok_Run_clean(t *testing.T) {
 
 	assert.Equal(t, "grok-4.6", res.RequestedModel)
 	assert.Equal(t, "grok-4.6-build", res.ActualModel)
+	assert.Equal(t, "01a01f13-e57f-77b1-827f-5c29c65b74b6", res.SessionID)
 	assert.Positive(t, res.Tokens)
 	assert.NotEmpty(t, sink.EmitCalls())
 }

@@ -126,6 +126,7 @@ func (f *finder) runAgent(ctx context.Context, spec prompt.AgentSpec, index int)
 	var fault error
 	for opts.n = 0; opts.n < maxAttempts; opts.n++ {
 		result, runErr := f.attempt(ctx, opts)
+		emitSession(f.emit, spec.Name, opts.spec.Executor, result)
 		res.stat.Tokens += result.Tokens
 		res.stat.Executor = opts.spec.Executor
 		res.stat.RequestedModel = opts.spec.Model

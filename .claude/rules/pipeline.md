@@ -230,6 +230,13 @@ The claude `result` event carries per-model `usage`, so per-agent totals cost no
 Record tokens per agent and summed per run, and stop there —
 revmux reports what was spent, it does not model or optimize it.
 
+Every executor that exposes a provider session id returns it with the attempt result.
+Emit that identity to `events.jsonl` immediately after the attempt returns, with the exact executor that ran it.
+Do not defer it to the finished manifest: a failed attempt, a retry and a run that never reaches its manifest
+all consumed usage an accounting tool still has to attribute.
+Store the identity only; provider journals own the token breakdown, and copying their usage into the event would
+create a second counter that can drift.
+
 ### Event channel
 
 The pipeline is headless and knows nothing about terminals.

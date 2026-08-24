@@ -204,7 +204,8 @@ reports the resolved path as `paths.profile_fallback`, and the bytes are copied 
 
 Every run writes its own artifacts into that round beside the caller's `input/`: `manifest.json` with the
 resolved roster and prompt provenance, the composed prompt each agent received, the findings after every
-stage, an `events.jsonl` of stalls and retries, and the verbatim output of every agent. That is what makes a
+stage, an `events.jsonl` of stalls, retries and provider session IDs per process attempt, and the verbatim
+output of every agent. That is what makes a
 review auditable without re-running it. [The archive layout](https://revmux.com/docs#archive) has the detail.
 
 ## Output

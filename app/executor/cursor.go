@@ -124,6 +124,9 @@ func (c *Cursor) parseStream(ctx context.Context, r io.Reader, sink EventSink) R
 		if !ok {
 			return
 		}
+		if ev.SessionID != "" {
+			res.SessionID = ev.SessionID
+		}
 		switch ev.Type {
 		case "system":
 			if ev.Model != "" {
@@ -193,14 +196,15 @@ func (c *Cursor) event(line string) (cursorEvent, bool) {
 
 // cursorEvent is one line of cursor-agent stream-json. The field names follow that CLI, not claude's.
 type cursorEvent struct {
-	Type     string          `json:"type"`
-	Subtype  string          `json:"subtype"`
-	Text     string          `json:"text"`
-	Model    string          `json:"model"`
-	Result   string          `json:"result"`
-	Usage    *cursorUsage    `json:"usage"`
-	Message  *streamMessage  `json:"message"`
-	ToolCall json.RawMessage `json:"tool_call"`
+	Type      string          `json:"type"`
+	Subtype   string          `json:"subtype"`
+	SessionID string          `json:"session_id"`
+	Text      string          `json:"text"`
+	Model     string          `json:"model"`
+	Result    string          `json:"result"`
+	Usage     *cursorUsage    `json:"usage"`
+	Message   *streamMessage  `json:"message"`
+	ToolCall  json.RawMessage `json:"tool_call"`
 }
 
 type cursorUsage struct {

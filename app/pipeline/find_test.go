@@ -351,14 +351,16 @@ func TestFinder_cursorQuotaDoesNotSwitchExecutor(t *testing.T) {
 
 func TestFinder_retry(t *testing.T) {
 	tests := []struct {
-		name  string
-		first executor.Result
-		err   error
+		name          string
+		first         executor.Result
+		err           error
+		retryExecutor string
 	}{
-		{name: "a stall", first: executor.Result{IdleTimedOut: true}},
-		{name: "a dead process", first: executor.Result{ExitCode: 1}},
-		{name: "a rate limit", first: executor.Result{RateLimited: true, RateLimit: executor.RateLimitInfo{Status: "rejected"}}},
-		{name: "a transport error", err: errors.New("pipe closed")},
+		{name: "a stall", first: executor.Result{IdleTimedOut: true}, retryExecutor: "claude"},
+		{name: "a dead process", first: executor.Result{ExitCode: 1}, retryExecutor: "claude"},
+		{name: "a rate limit", first: executor.Result{RateLimited: true,
+			RateLimit: executor.RateLimitInfo{Status: "rejected"}}, retryExecutor: "cursor-agent"},
+		{name: "a transport error", err: errors.New("pipe closed"), retryExecutor: "claude"},
 	}
 
 	for _, tt := range tests {
@@ -368,20 +370,32 @@ func TestFinder_retry(t *testing.T) {
 			h.cfg.NewRunner = func(RunnerSpec) Runner {
 				return &mocks.RunnerMock{RunFunc: func(context.Context, executor.Request, executor.EventSink) (executor.Result, error) {
 					if attempts.Add(1) == 1 {
-						return tt.first, tt.err
+						first := tt.first
+						first.SessionID = "first-attempt"
+						return first, tt.err
 					}
 					return executor.Result{StructuredOutput: findingsJSON(
-						`{"file":"a.go","line":1,"severity":"major","confidence":85,"title":"survived"}`)}, nil
+						`{"file":"a.go","line":1,"severity":"major","confidence":85,"title":"survived"}`), SessionID: "retry-attempt"}, nil
 				}}
 			}
 
-			var kinds []EventKind
-			f := h.finder(func(ev Event) { kinds = append(kinds, ev.Kind) })
+			var seen []Event
+			f := h.finder(func(ev Event) { seen = append(seen, ev) })
 			res := f.runAgent(context.Background(), h.cfg.Roster[0], 0)
 			require.True(t, res.ok(), "a retry that succeeds is not a degraded source")
 			require.Len(t, res.findings, 1)
 			assert.Equal(t, int64(2), attempts.Load(), "exactly one retry")
-			assert.Equal(t, []EventKind{EventAgentStarted, EventAgentRetried, EventFindings, EventAgentDone}, kinds)
+			kinds := make([]EventKind, len(seen))
+			for i, ev := range seen {
+				kinds[i] = ev.Kind
+			}
+			assert.Equal(t, []EventKind{EventAgentStarted, EventSession, EventAgentRetried,
+				EventSession, EventFindings, EventAgentDone}, kinds)
+			assert.Equal(t, "first-attempt", seen[1].SessionID)
+			assert.Equal(t, "retry-attempt", seen[3].SessionID)
+			assert.Equal(t, "claude", seen[1].Executor)
+			assert.Equal(t, tt.retryExecutor, seen[3].Executor,
+				"the durable identity names the executor of this attempt, including quota fallback")
 		})
 	}
 

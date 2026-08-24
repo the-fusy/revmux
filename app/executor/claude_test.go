@@ -82,7 +82,7 @@ func patchEvent(t *testing.T, evType string, patch func(map[string]any)) []byte 
 func writeFixture(t *testing.T, data []byte) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "stream.jsonl")
-	require.NoError(t, os.WriteFile(path, data, 0o600))
+	require.NoError(t, os.WriteFile(path, data, 0o600)) //nolint:gosec // t.TempDir owns the fixed child path
 	return path
 }
 
@@ -157,6 +157,7 @@ func TestClaude_Run_clean(t *testing.T) {
 	assert.NotEmpty(t, out.Findings[0].Lenses)
 
 	assert.Equal(t, "opus", res.RequestedModel)
+	assert.Equal(t, "5cbe5de1-4566-4be3-a7eb-295522c1067b", res.SessionID)
 	assert.NotEmpty(t, res.ActualModel)
 	assert.Positive(t, res.Tokens)
 	assert.Positive(t, res.TTFTMs)

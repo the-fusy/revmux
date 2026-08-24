@@ -22,6 +22,7 @@ const schemaToolName = "StructuredOutput"
 type streamEvent struct {
 	Type             string                `json:"type"`
 	Subtype          string                `json:"subtype"`
+	SessionID        string                `json:"session_id"`
 	StructuredOutput json.RawMessage       `json:"structured_output"`
 	ModelUsage       map[string]modelUsage `json:"modelUsage"`
 	Usage            *tokenUsage           `json:"usage"`
@@ -217,6 +218,9 @@ func parseMessagesStream(p *proc, ctx context.Context, r io.Reader, sink EventSi
 		ev, ok := decodeStreamEvent(line)
 		if !ok {
 			return
+		}
+		if ev.SessionID != "" {
+			res.SessionID = ev.SessionID
 		}
 		switch ev.Type {
 		case "assistant":

@@ -181,10 +181,10 @@ func (p *proc) readLines(ctx context.Context, r io.Reader, handler func(string))
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 0, bufio.MaxScanTokenSize), maxLineBytes)
 	for sc.Scan() {
+		handler(sc.Text())
 		if ctx.Err() != nil {
 			return fmt.Errorf("%s output stopped: %w", p.bin, ctx.Err())
 		}
-		handler(sc.Text())
 	}
 	if err := sc.Err(); err != nil {
 		if ctx.Err() != nil {

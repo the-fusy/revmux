@@ -95,14 +95,15 @@ func TestPipeline_Run_recordsTheStageRunner(t *testing.T) {
 	h := newHarnessWith(t, map[string]string{"prompts/profiles/testprof.md": codexStageProfile})
 	h.cfg.NoSynthesis, h.cfg.NoVerify = false, false
 	h.cfg.NewRunner = h.runner(map[string]executor.Result{
-		"bugs":         {StructuredOutput: findingsJSON(`{"file":"a.go","line":1,"severity":"major","confidence":90,"title":"x"}`)},
-		"impl":         {StructuredOutput: findingsJSON(``)},
-		stageSynthesis: {StructuredOutput: json.RawMessage(`{"findings":[{"merged_ids":["bugs-1"],"file":"a.go","line":1,"severity":"major","confidence":90,"title":"x","body":"b"}]}`)},
-		stageVerify:    {StructuredOutput: json.RawMessage(`{"verdicts":[{"id":"bugs-1","verdict":"confirmed"}]}`)},
+		"bugs": {StructuredOutput: findingsJSON(
+			`{"file":"a.go","line":1,"severity":"major","confidence":90,"title":"x"}`), SessionID: "find-bugs"},
+		"impl":         {StructuredOutput: findingsJSON(``), SessionID: "find-impl"},
+		stageSynthesis: {StructuredOutput: json.RawMessage(`{"findings":[{"merged_ids":["bugs-1"],"file":"a.go","line":1,"severity":"major","confidence":90,"title":"x","body":"b"}]}`), SessionID: "synthesis-1"},
+		stageVerify:    {StructuredOutput: json.RawMessage(`{"verdicts":[{"id":"bugs-1","verdict":"confirmed"}]}`), SessionID: "verify-1"},
 	})
 
 	p := New(h.cfg)
-	drain(p)
+	displayed := drain(p)
 	rep, err := p.Run(context.Background())
 	require.NoError(t, err)
 
@@ -117,6 +118,37 @@ func TestPipeline_Run_recordsTheStageRunner(t *testing.T) {
 	assert.Equal(t, "high", byName[stageSynthesis].Effort)
 	assert.Equal(t, "codex", byName[stageVerify].Executor)
 	assert.Equal(t, "gpt-5.6-sol", byName[stageVerify].Model)
+
+	var sessions []Event
+	dec := json.NewDecoder(strings.NewReader(h.events.String()))
+	for {
+		var ev Event
+		decodeErr := dec.Decode(&ev)
+		if errors.Is(decodeErr, io.EOF) {
+			break
+		}
+		require.NoError(t, decodeErr)
+		if ev.Kind == EventSession {
+			sessions = append(sessions, ev)
+		}
+	}
+	require.Len(t, sessions, 4, "every provider process is attributable from the durable event stream")
+	byID := map[string]Event{}
+	for _, ev := range sessions {
+		byID[ev.SessionID] = ev
+	}
+	assert.Equal(t, "codex", byID["find-bugs"].Executor)
+	assert.Equal(t, "bugs", byID["find-bugs"].Agent)
+	assert.Equal(t, "codex", byID["find-impl"].Executor)
+	assert.Equal(t, "impl", byID["find-impl"].Agent)
+	assert.Equal(t, "codex", byID["synthesis-1"].Executor)
+	assert.Equal(t, stageSynthesis, byID["synthesis-1"].Agent)
+	assert.Equal(t, "codex", byID["verify-1"].Executor)
+	assert.True(t, strings.HasPrefix(byID["verify-1"].Agent, stageVerify+" "))
+	for _, ev := range <-displayed {
+		assert.NotEqual(t, EventSession, ev.Kind,
+			"archive-only attribution must not consume a slot in the renderer's lossy channel")
+	}
 }
 
 func TestNew_stagger(t *testing.T) {

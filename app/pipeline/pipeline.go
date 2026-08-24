@@ -63,6 +63,16 @@ func archivedPrompt(exec, text string, schema json.RawMessage) string {
 	}
 }
 
+// emitSession records the provider's durable conversation identity as soon as one process returns.
+// It belongs in events.jsonl rather than the finished manifest: failed attempts and a run that never
+// reaches its manifest still consumed usage that a local accounting tool must be able to identify.
+func emitSession(emit func(Event), agent, executorName string, res executor.Result) {
+	if res.SessionID == "" {
+		return
+	}
+	emit(Event{Kind: EventSession, Agent: agent, Executor: executorName, SessionID: res.SessionID})
+}
+
 // recordDelivered copies a delivered runner onto the stage the report and manifest read.
 func recordDelivered(stage *prompt.Stage, spec RunnerSpec) {
 	if stage == nil {
@@ -269,6 +279,9 @@ func (p *Pipeline) emit(ev Event) {
 		ev.At = p.cfg.Clock.Now()
 	}
 	p.archive(ev)
+	if ev.Kind == EventSession {
+		return // durable accounting identity, never renderer activity or pressure on its lossy buffer
+	}
 	select {
 	case p.events <- ev:
 	default:

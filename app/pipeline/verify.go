@@ -206,6 +206,7 @@ func (v *verifier) runOne(ctx context.Context, g verifyGroup) ([]finding.Finding
 	var err error
 	for n := range maxAttempts {
 		res, err = v.cfg.NewRunner(spec).Run(ctx, req, newSink(agent, v.emit, nil))
+		emitSession(v.emit, agent, spec.Executor, res)
 		v.tokens.Add(int64(res.Tokens))
 		if err == nil && len(res.StructuredOutput) > 0 {
 			break

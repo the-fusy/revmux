@@ -328,11 +328,15 @@ func TestCodex_Run_tokensFromStderrFooter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("CODEX_HOME", t.TempDir())
 			errPath := writeFixture(t, []byte(tt.stderr))
 			c := executor.NewCodex(fakeRunner("emit", path, errPath), executor.Opts{})
 			res, err := c.Run(context.Background(), executor.Request{Prompt: "x"}, discardSink())
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, res.Tokens)
+			if tt.name == "as recorded" {
+				assert.Equal(t, "019f9d7b-8724-7610-883e-0153227b0396", res.SessionID)
+			}
 		})
 	}
 }

@@ -512,12 +512,17 @@ claude/opus:hgih         <span class="c-crimson">refused: not an effort</span></
 ├── prompts/stages/    synthesis and one file per verify group
 ├── prompts/input-profile.md  the project profile's bytes, when the round inherited one
 ├── stages/            1-found.json, 2-synthesized.json, 3-verified.json
-├── events.jsonl       stalls, retries, degrades, stage transitions
+├── events.jsonl       decisions plus provider session ids per process attempt
 ├── agents/            verbatim tees: &lt;agent&gt;.jsonl, &lt;agent&gt;.log, &lt;agent&gt;.retry.jsonl
 └── report.md, findings.json</pre>
         <p class="small">
           A failed archive write fails the run. The one exception is a per-agent tee under
           <code>agents/</code>, which degrades that one source instead.
+        </p>
+        <p class="small">
+          A provider identity entry is
+          <code>{"kind":"session","agent":"...","executor":"...","session_id":"...","at":"..."}</code>.
+          There is one per process attempt when that executor exposes an ID, including failed attempts and retries.
         </p>
 
         <h2 id="names">Name rules <a class="anchor" href="#names">#</a></h2>

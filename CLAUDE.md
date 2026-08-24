@@ -215,7 +215,7 @@ the final report, so a round directory holds:
 │   ├── stages/       split so a roster agent named `verify` cannot overwrite a stage prompt
 │   └── input-profile.md  the project profile's bytes, when the round inherited one
 ├── stages/           findings after find, after synthesis, after verify
-├── events.jsonl      revmux's own decisions: stalls, retries, degrades, stage changes
+├── events.jsonl      decisions plus provider session ids per process attempt
 ├── agents/           verbatim tees, own subdir for the same reason
 │                     <agent>.jsonl claude stream-json, <agent>.log codex prose,
 │                     <agent>.retry.jsonl the second attempt when one is retried

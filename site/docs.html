@@ -889,7 +889,7 @@ receives, including what counts as critical, major and minor here.</pre>
 │   ├── 1-found.json          findings as the find stage left them
 │   ├── 2-synthesized.json
 │   └── 3-verified.json
-├── events.jsonl              revmux's own decisions: stalls, retries, degrades, stage transitions
+├── events.jsonl              decisions plus provider session ids per process attempt
 ├── agents/                   verbatim tees; own subdir so an agent named `events` cannot collide
 │   ├── bugs+impl.jsonl       claude stream-json
 │   ├── bugs+impl.retry.jsonl a retried agent keeps both attempts
@@ -901,6 +901,12 @@ receives, including what counts as critical, major and minor here.</pre>
           its content hash, because two rounds of one task can use different lens text. It also records
           requested-vs-actual model per agent: <code>claude --model</code> can be silently ignored, so a
           roster's model pin is a claim until it is read back.
+        </p>
+        <p>
+          Each provider process that exposes a session ID adds a <code>session</code> event with its agent,
+          exact executor and <code>session_id</code>. It is written once per attempt, including failed attempts
+          and retries, so a local accounting tool can join the round to Claude, Codex, Cursor or Grok's own
+          usage journal without revmux keeping a second token counter.
         </p>
         <p>
           It doubles as the marker claiming the round. It is created exclusively as the run starts, which is

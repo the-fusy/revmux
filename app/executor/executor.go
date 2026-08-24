@@ -94,6 +94,7 @@ type RateLimitInfo struct {
 type Result struct {
 	StructuredOutput json.RawMessage
 	Raw              string
+	SessionID        string
 	ExitCode         int
 	IdleTimedOut     bool
 	RateLimited      bool

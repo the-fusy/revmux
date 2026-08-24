@@ -361,6 +361,10 @@ func (m Model) find(name string) *agentState {
 // track folds the event into the agent's row and returns the line for the log panes. An unrecognized
 // kind returns empty and is dropped: a blank row would read as an agent that went quiet.
 func (a *agentState) track(ev pipeline.Event) string {
+	if ev.Kind == pipeline.EventSession {
+		// archived identity for local usage accounting, not activity or liveness
+		return ""
+	}
 	if a.started.IsZero() {
 		a.started = ev.At
 	}
