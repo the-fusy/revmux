@@ -48,7 +48,8 @@ config's other keys.
 ### What belongs in the config file
 
 Runtime knobs only: `idle-timeout`, `hard-timeout`, `stagger-delay`, `max-parallel`, `verify-groups`,
-`verify-group-by`, `tasks-dir`, `auto-exit`, `profile`.
+`verify-group-by`, `tasks-dir`, `auto-exit`, `profile`, `spend-grok`, `spend-claude`, `spend-codex`,
+`spend-cursor`.
 The key is the long flag name verbatim, hyphens included — that is what `ini-name` is set to, and it is what
 makes the key guessable from `--help`.
 
@@ -622,10 +623,11 @@ over the stage before it rather than as a total, so the `report` entry reports n
 still carries every verdict verification wrote, and counting them there would credit the `--min-confidence`
 filter with work it only passed through.
 
-**`SourceStat.Tokens` is not one quantity.** claude sums input, output and both cache counters; codex
-scrapes the number after its own `tokens used` footer. The field is honest per agent and over time, and
-does not support ranking agents of different executors against each other. Its godoc says so, because the
-comparison is the natural thing to reach for and it is wrong.
+**`SourceStat.Tokens` is not one quantity.** claude and grok sum input, output and both cache counters;
+codex scrapes the number after its own `tokens used` footer; cursor-agent reports its result-event total.
+The field is honest per agent and over time, and does not support ranking agents of different executors
+against each other.
+Its godoc says so, because the comparison is the natural thing to reach for and it is wrong.
 
 **Every survivor and every per-lens number comes from the per-stage snapshots, never from `findings.json`.**
 That file is the `--min-confidence`-filtered report and its survivors are split across four arrays; counting

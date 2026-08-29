@@ -34,7 +34,7 @@ func TestEvent_jsonRoundTrip(t *testing.T) {
 func TestEvent_kindsAreDistinct(t *testing.T) {
 	kinds := []EventKind{
 		EventAgentStarted, EventAgentActivity, EventAgentState, EventAgentDone,
-		EventAgentRetried, EventAgentDegraded, EventFindings, EventStage, EventRateLimit,
+		EventAgentRetried, EventAgentDegraded, EventSession, EventFindings, EventStage, EventRateLimit,
 	}
 
 	seen := map[EventKind]struct{}{}
@@ -44,6 +44,17 @@ func TestEvent_kindsAreDistinct(t *testing.T) {
 		assert.False(t, dup, "duplicate kind %q would make one renderer case unreachable", k)
 		seen[k] = struct{}{}
 	}
+}
+
+func TestEvent_sessionIdentityRoundTrip(t *testing.T) {
+	in := Event{Kind: EventSession, Agent: "synthesis", Executor: "codex",
+		SessionID: "019f9d7b-8724-7610-883e-0153227b0396"}
+	data, err := json.Marshal(in)
+	require.NoError(t, err)
+
+	var out Event
+	require.NoError(t, json.Unmarshal(data, &out))
+	assert.Equal(t, in, out)
 }
 
 func TestEvent_emptyFieldsAreOmitted(t *testing.T) {

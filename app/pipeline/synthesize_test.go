@@ -125,11 +125,13 @@ func TestSynthesizer_run(t *testing.T) {
 						RunFunc: func(context.Context, executor.Request, executor.EventSink) (executor.Result, error) {
 							calls++
 							if calls == 1 {
-								return tt.res, tt.err
+								first := tt.res
+								first.SessionID = "first-attempt"
+								return first, tt.err
 							}
 							return executor.Result{Tokens: 150, StructuredOutput: synthJSON(
 								`{"merged_ids":["codex-1"],"file":"a.go","line":10,"severity":"major","confidence":70,"title":"leak","body":"b"}`,
-							)}, nil
+							), SessionID: "retry-attempt"}, nil
 						}}
 				}
 
@@ -141,13 +143,51 @@ func TestSynthesizer_run(t *testing.T) {
 				require.Len(t, rep.Findings, 1)
 				assert.Equal(t, 250, rep.Stats.Tokens, "the failed attempt spent what it spent")
 
-				// started, the retry, what the merge dropped, the merged findings, done
-				require.Len(t, seen, 5)
-				assert.Equal(t, EventAgentRetried, seen[1].Kind)
-				assert.Equal(t, stageSynthesis, seen[1].Agent)
-				assert.Contains(t, seen[1].Text, tt.wantText)
+				// started, first session, retry, second session, what the merge dropped, findings, done
+				require.Len(t, seen, 7)
+				assert.Equal(t, EventSession, seen[1].Kind)
+				assert.Equal(t, "first-attempt", seen[1].SessionID)
+				assert.Equal(t, EventAgentRetried, seen[2].Kind)
+				assert.Equal(t, stageSynthesis, seen[2].Agent)
+				assert.Contains(t, seen[2].Text, tt.wantText)
+				assert.Equal(t, EventSession, seen[3].Kind)
+				assert.Equal(t, "retry-attempt", seen[3].SessionID)
 			})
 		}
+	})
+
+	t.Run("a spent meter retries on cursor and rewrites the archived prompt", func(t *testing.T) {
+		h := newHarness(t)
+		var specs []RunnerSpec
+		calls := 0
+		h.cfg.NewRunner = func(rs RunnerSpec) Runner {
+			specs = append(specs, rs)
+			return &mocks.RunnerMock{RunFunc: func(context.Context, executor.Request, executor.EventSink) (executor.Result, error) {
+				calls++
+				if calls == 1 {
+					return executor.Result{RateLimited: true, RateLimit: executor.RateLimitInfo{Status: "rejected"}}, nil
+				}
+				return executor.Result{StructuredOutput: synthJSON(
+					`{"merged_ids":["codex-1"],"file":"a.go","line":10,"severity":"major","confidence":70,"title":"leak","body":"b"}`,
+				)}, nil
+			}}
+		}
+
+		s := &synthesizer{cfg: h.cfg, save: h.save, emit: func(Event) {}}
+		_, err := s.run(context.Background(), synthSources())
+		require.NoError(t, err)
+		require.Len(t, specs, 2)
+		assert.Equal(t, "claude", specs[0].Executor)
+		assert.Equal(t, "cursor-agent", specs[1].Executor)
+		require.NotNil(t, s.stage)
+		assert.Equal(t, "cursor-agent", s.stage.Executor)
+		assert.Equal(t, "claude-opus-5-thinking", s.stage.Model)
+
+		archived := h.get("prompts/stages/synthesis.md")
+		require.NotNil(t, archived)
+		got := archived.String()
+		assert.Contains(t, got, executor.CursorOutputContract(finding.SynthesisSchema()))
+		assert.NotContains(t, got, executor.ClaudeNarrationContract(finding.SynthesisSchema()))
 	})
 
 	t.Run("a non-zero exit is retried too", func(t *testing.T) {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"strings"
 )
 
 // rateLimitRejected is the one rate_limit_event status that means the request was refused. The CLI's
@@ -31,7 +30,7 @@ func (c *Claude) Run(ctx context.Context, req Request, sink EventSink) (Result, 
 		argv: c.args(req),
 		sink: sink,
 		parse: func(ctx context.Context, r io.Reader) Result {
-			return c.parseStream(ctx, r, sink)
+			return parseMessagesStream(&c.proc, ctx, r, sink)
 		},
 	}
 	res, err := c.run(ctx, req, spec)
@@ -64,6 +63,10 @@ func ClaudeNarrationContract(schema json.RawMessage) string {
 // after it is complete, so a large answer puts the stream past the idle timeout with the agent working —
 // measured killing synthesis twice at 120s while it merged 39 findings. The deltas are the only liveness
 // there is in that window; the narration contract cannot reach into a tool call the model is composing.
+//
+// --print writes a transcript under ~/.claude/projects/ by default. Do not pass
+// --no-session-persistence: ccusage and /resume both read that store, and a review launched from any
+// harness has to land in the same history as an interactive session in the same cwd.
 func (c *Claude) args(req Request) []string {
 	argv := []string{
 		"--print",
@@ -72,7 +75,6 @@ func (c *Claude) args(req Request) []string {
 		"--permission-mode", "auto",
 		"--disallowedTools", "Edit,Write",
 		"--disable-slash-commands",
-		"--no-session-persistence",
 		"--include-partial-messages",
 	}
 	if req.Model != "" {
@@ -85,60 +87,4 @@ func (c *Claude) args(req Request) []string {
 		argv = append(argv, "--json-schema", string(req.Schema))
 	}
 	return argv
-}
-
-// parseStream consumes the stream and returns what it learned. A line that fails to decode is skipped:
-// a truncated stream must degrade to a partial Result rather than fail the run.
-func (c *Claude) parseStream(ctx context.Context, r io.Reader, sink EventSink) Result {
-	res := Result{}
-	_ = c.readLines(ctx, r, func(line string) {
-		ev, ok := c.event(line)
-		if !ok {
-			return
-		}
-		switch ev.Type {
-		case "assistant":
-			// two separate questions about one turn: what the model said, and whether it is alive.
-			// prose is worth a scrollback line, a tool name is worth only a status cell, and a turn
-			// that does both emits both.
-			if text := ev.activity(); text != "" {
-				c.emit(sink, Event{Kind: EventActivity, Text: text})
-			}
-			if note := ev.progress(); note != "" {
-				c.emit(sink, Event{Kind: EventProgress, Text: note})
-			}
-		case "rate_limit_event":
-			if ev.RateLimitInfo == nil {
-				return
-			}
-			res.RateLimit = *ev.RateLimitInfo
-			res.RateLimited = ev.RateLimitInfo.Status == rateLimitRejected
-			if res.RateLimited {
-				c.emit(sink, Event{Kind: EventRateLimit, Text: ev.RateLimitInfo.Status})
-			}
-		case "result":
-			// a refused tool call is reported, never swallowed: the agent works around it silently
-			// and the review narrows without anything else saying so
-			if note := ev.denials(); note != "" {
-				c.emit(sink, Event{Kind: EventInfo, Text: note})
-			}
-			res.StructuredOutput = ev.StructuredOutput
-			res.ActualModel = ev.actualModel()
-			res.Tokens = ev.tokens()
-			res.TTFTMs = ev.TTFTMs
-		}
-	})
-	return res
-}
-
-func (c *Claude) event(line string) (streamEvent, bool) {
-	line = strings.TrimSpace(line)
-	if line == "" {
-		return streamEvent{}, false
-	}
-	var ev streamEvent
-	if err := json.Unmarshal([]byte(line), &ev); err != nil {
-		return streamEvent{}, false
-	}
-	return ev, ev.Type != ""
 }

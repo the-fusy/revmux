@@ -65,6 +65,10 @@ type options struct {
 	TasksDir      string        `long:"tasks-dir" ini-name:"tasks-dir" default:"./.revmux/tasks" description:"root directory holding task directories"`
 	AutoExit      time.Duration `long:"auto-exit" ini-name:"auto-exit" default:"0s" description:"close the terminal UI this long after the report arrives; 0 never closes it"`
 	Profile       string        `long:"profile" ini-name:"profile" default:"comprehensive" description:"profile naming the roster to run"`
+	SpendGrok     string        `long:"spend-grok" ini-name:"spend-grok" default:"false" choice:"true" choice:"false" description:"run grok-named agents on the grok CLI"`
+	SpendClaude   string        `long:"spend-claude" ini-name:"spend-claude" default:"true" choice:"true" choice:"false" description:"allow spawning claude"`
+	SpendCodex    string        `long:"spend-codex" ini-name:"spend-codex" default:"true" choice:"true" choice:"false" description:"allow spawning codex"`
+	SpendCursor   string        `long:"spend-cursor" ini-name:"spend-cursor" default:"true" choice:"true" choice:"false" description:"allow spawning cursor-agent"`
 
 	ConfigDir    string `long:"config-dir" no-ini:"true" description:"directory holding the config file and the prompt tree"`
 	Init         bool   `long:"init" no-ini:"true" description:"materialize the resolved prompt tree and a config template into ./.revmux/"`

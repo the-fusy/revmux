@@ -123,7 +123,7 @@ func TestCodex_args(t *testing.T) {
 		require.Len(t, runner.CommandCalls(), 1)
 		call := runner.CommandCalls()[0]
 		assert.Equal(t, "codex", call.Name)
-		want := []string{"exec", "--sandbox", "read-only", "-m", "gpt-5.6-sol", "-c", "model_reasoning_effort=xhigh"}
+		want := []string{"exec", "--sandbox", "danger-full-access", "-m", "gpt-5.6-sol", "-c", "model_reasoning_effort=xhigh"}
 		assert.Equal(t, want, call.Args)
 	})
 
@@ -134,8 +134,8 @@ func TestCodex_args(t *testing.T) {
 		require.NoError(t, err)
 
 		args := runner.CommandCalls()[0].Args
-		assert.Equal(t, []string{"exec", "--sandbox", "read-only"}, args)
-		assert.Contains(t, args, "read-only", "codex never gets a writable sandbox")
+		assert.Equal(t, []string{"exec", "--sandbox", "danger-full-access"}, args)
+		assert.NotContains(t, args, "read-only", "codex is not jailed; reviews fetch facts")
 	})
 }
 
@@ -328,11 +328,15 @@ func TestCodex_Run_tokensFromStderrFooter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("CODEX_HOME", t.TempDir())
 			errPath := writeFixture(t, []byte(tt.stderr))
 			c := executor.NewCodex(fakeRunner("emit", path, errPath), executor.Opts{})
 			res, err := c.Run(context.Background(), executor.Request{Prompt: "x"}, discardSink())
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, res.Tokens)
+			if tt.name == "as recorded" {
+				assert.Equal(t, "019f9d7b-8724-7610-883e-0153227b0396", res.SessionID)
+			}
 		})
 	}
 }

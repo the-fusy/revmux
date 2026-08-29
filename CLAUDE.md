@@ -1,7 +1,7 @@
 # revmux — project notes
 
-revmux runs a structured multi-agent code review by spawning and supervising `claude --print` and
-`codex exec` subprocesses, then returns findings.
+revmux runs a structured multi-agent code review by spawning and supervising `claude --print`,
+`codex exec`, `cursor-agent --print` and `grok` subprocesses, then returns findings.
 It exists because agent fan-out driven from inside an AI coding session is unobservable and unrecoverable:
 agents go silent for minutes, sometimes never return, and the caller has no timeout, no kill, no retry and no progress.
 
@@ -60,7 +60,7 @@ If a note would be equally true of any Go project, it does not belong here.
 - `app/artifacts.go` — the artifacts `package main` owns: `manifest.json`, `report.md`, `findings.json`
 - `app/progress.go` — the non-TTY event subscriber (timestamped lines to stderr), plus the run's closing
   summary, which the pipeline emits no event for
-- `app/executor/` — supervised subprocess execution for claude and codex
+- `app/executor/` — supervised subprocess execution for claude, codex, cursor-agent and grok
 - `app/prompt/` — front matter and roster parsing, lens composition, `{{VAR}}` substitution, `go:embed` defaults
 - `app/pipeline/` — the three stages, fan-out, stagger, degrade policy, typed event channel
 - `app/finding/` — `Finding` and `Report` types, the per-stage JSON schemas, markdown and JSON rendering
@@ -215,7 +215,7 @@ the final report, so a round directory holds:
 │   ├── stages/       split so a roster agent named `verify` cannot overwrite a stage prompt
 │   └── input-profile.md  the project profile's bytes, when the round inherited one
 ├── stages/           findings after find, after synthesis, after verify
-├── events.jsonl      revmux's own decisions: stalls, retries, degrades, stage changes
+├── events.jsonl      decisions plus provider session ids per process attempt
 ├── agents/           verbatim tees, own subdir for the same reason
 │                     <agent>.jsonl claude stream-json, <agent>.log codex prose,
 │                     <agent>.retry.jsonl the second attempt when one is retried
@@ -331,7 +331,7 @@ to carry a model across binaries, and the three fallback layers are applied in t
 together — collapsing any two of them loses whichever the third turns out to be compatible with.
 
 The stage files name **no** runner: they are text, and the profile's `model:` reaches the roster, the
-`--lenses` agent and both stages alike, so `codex-only` is one line. A profile's optional `stages:` block is
+`--lenses` agent and both stages alike, so a profile whose `model:` is `codex` is one line. A profile's optional `stages:` block is
 for a deliberately mixed run and names each stage separately, so synthesis and verify can take different
 models.
 `app/pipeline` resolves through `Profile.Stage`, never `Set.Stage` — the latter answers what the file says,
@@ -523,20 +523,21 @@ Stamping happens in `find`, not synthesis, or `--no-synthesis` runs carry invent
   that list to make a failing run pass is the mechanism the derived-from-`ProfileNames()` design exists to
   prevent, and the three that are there each name the review shape their bar is written for.
 - **The severity bar is duplicated in every profile body** and nothing composes it from one place:
-  `comprehensive`, `codex-only`, `claude-only`, `focused` and `grill-me` carry a byte-identical
+  `comprehensive`, `focused` and `grill-me` carry a byte-identical
   `## Severity bar` section, `final` carries a two-severity variant of the same text, `triage` carries
   a bar that is not a variant of it at all — its severities rate how much a point bears on the decision,
   because it reads a filed item and there is no runtime for anything to go wrong at — and `expert` carries
   a third shape, rating what goes wrong if the thing is built and run as written, because what it reviews
   may be a plan rather than a change.
-  A change to what a severity means is eight edits, and the five identical copies must stay identical —
+  A change to what a severity means is six edits, and the three identical copies must stay identical —
   two profiles disagreeing about what `major` is means the same defect gates one review shape and not
   another, which reads as the model being inconsistent rather than the prompts being out of step.
-  A code-review wording change stops at the five: propagating it into `triage` or `expert` is what the
+  A code-review wording change stops at the three: propagating it into `triage` or `expert` is what the
   separate bars exist to prevent.
   `.claude/rules/prompts.md` calls the body "the shared preamble and severity bar"; shared across the
   agents of one run, not across profiles.
-  **`## What not to report` is the second such block**, byte-identical in six of the eight, and it is the
+  **`## What not to report` is the second such block**, byte-identical in the code-review profiles except
+  `triage` and `expert`, and it is the
   one a finder consults before writing anything down — so a rule added to one profile and not the others
   makes the same finding reportable under one review shape and suppressed under another.
   `triage` and `expert` are the exceptions and carry their own, since the shipped copy is written about
@@ -661,7 +662,7 @@ Every animation is disabled under `prefers-reduced-motion`.
 
 Detailed per-subsystem engineering notes live in `.claude/rules/*.md`, each scoped with `paths:` frontmatter.
 
-- `.claude/rules/executor.md` — subprocess supervision, verified `claude` and `codex` CLI behavior, stream decoding
+- `.claude/rules/executor.md` — subprocess supervision and verified model-CLI behavior
 - `.claude/rules/pipeline.md` — the three-stage contract, degrade policy, stagger, event channel
 - `.claude/rules/prompts.md` — front matter, roster resolution, lens composition, config precedence
 - `.claude/rules/tui.md` — bubbletea conventions and the lipgloss/ANSI traps

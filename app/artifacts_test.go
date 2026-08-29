@@ -210,6 +210,28 @@ func TestRun_archive(t *testing.T) {
 		assert.Equal(t, []string{".", task.ScopeFile}, input, "the caller's own input is left exactly as it was")
 	})
 
+	t.Run("the manifest records the executor that delivered, not the roster's", func(t *testing.T) {
+		o := runOpts{}
+		cfg := pipeline.Config{
+			Set:     &prompt.Set{},
+			Profile: &prompt.Profile{},
+			Roster: []prompt.AgentSpec{{
+				Name: "bugs", Lenses: []string{"bugs"},
+				Executor: "claude", Model: "opus", Effort: "high",
+			}},
+		}
+		rep := finding.Report{Sources: finding.SourceStatus{Agents: []finding.SourceStat{{
+			Name: "bugs", Executor: "cursor-agent", RequestedModel: "claude-opus-5-thinking",
+			ActualModel: "Claude Opus 5 300K High", Tokens: 9, Raised: 1,
+		}}}}
+		got := o.manifest(cfg, rep)
+		require.Len(t, got.Agents, 1)
+		assert.Equal(t, "cursor-agent", got.Agents[0].Executor)
+		assert.Equal(t, "claude-opus-5-thinking", got.Agents[0].RequestedModel)
+		assert.Equal(t, "Claude Opus 5 300K High", got.Agents[0].ActualModel)
+		assert.Equal(t, 9, got.Agents[0].Tokens)
+	})
+
 	t.Run("the manifest records what actually ran, not only what was asked for", func(t *testing.T) {
 		r, root := archiveRun(t)
 		require.Equal(t, 1, run(r.opts()))

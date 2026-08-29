@@ -1,0 +1,10 @@
+{"type":"system","subtype":"init","model":"Cursor Grok 4.6 High","session_id":"s1"}
+{"type":"thinking","subtype":"delta","text":"Reading","session_id":"s1"}
+{"type":"thinking","subtype":"delta","text":" the","session_id":"s1"}
+{"type":"thinking","subtype":"delta","text":" diff","session_id":"s1"}
+{"type":"thinking","subtype":"delta","text":" next","session_id":"s1"}
+{"type":"thinking","subtype":"completed","session_id":"s1"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"I'll"}]},"session_id":"s1"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":" check"}]},"session_id":"s1"}
+{"type":"tool_call","subtype":"started","call_id":"c1","tool_call":{"readToolCall":{"args":{"path":"/repo/app/foo.go"}}}}
+{"type":"result","subtype":"success","is_error":false,"result":"{\"findings\":[]}","session_id":"s1","usage":{"inputTokens":10,"outputTokens":1,"cacheReadTokens":0,"cacheWriteTokens":0}}

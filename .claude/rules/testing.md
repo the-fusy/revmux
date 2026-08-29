@@ -12,7 +12,7 @@ and never edited by hand.
 ### No test spawns a real model
 
 Not in CI, not locally, not "just this once to check".
-A test that shells out to `claude` or `codex` is slow, costs money, needs auth, and fails for reasons
+A test that shells out to a model CLI is slow, costs money, needs auth, and fails for reasons
 that have nothing to do with the code under test.
 
 Every executor test drives a mocked `CommandRunner` that returns a **recorded stream fixture** from

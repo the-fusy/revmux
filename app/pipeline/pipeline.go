@@ -50,13 +50,35 @@ func answered(raw json.RawMessage, key string) bool {
 }
 
 // archivedPrompt is the prompt the process actually receives, which is the only version worth storing.
-// Each executor appends something of its own — codex its output contract, claude its narration contract
-// — so a prompt archived as composed describes a review that did not happen.
+// Each executor appends something of its own — cursor and codex an output contract, claude a
+// narration contract — so a prompt archived as composed describes a review that did not happen.
 func archivedPrompt(exec, text string, schema json.RawMessage) string {
-	if exec != executorCodex {
+	switch exec {
+	case executorCodex:
+		return text + executor.CodexOutputContract(schema)
+	case executorCursor:
+		return text + executor.CursorOutputContract(schema)
+	default:
 		return text + executor.ClaudeNarrationContract(schema)
 	}
-	return text + executor.CodexOutputContract(schema)
+}
+
+// emitSession records the provider's durable conversation identity as soon as one process returns.
+// It belongs in events.jsonl rather than the finished manifest: failed attempts and a run that never
+// reaches its manifest still consumed usage that a local accounting tool must be able to identify.
+func emitSession(emit func(Event), agent, executorName string, res executor.Result) {
+	if res.SessionID == "" {
+		return
+	}
+	emit(Event{Kind: EventSession, Agent: agent, Executor: executorName, SessionID: res.SessionID})
+}
+
+// recordDelivered copies a delivered runner onto the stage the report and manifest read.
+func recordDelivered(stage *prompt.Stage, spec RunnerSpec) {
+	if stage == nil {
+		return
+	}
+	stage.Executor, stage.Model, stage.Effort = spec.Executor, spec.Model, spec.Effort
 }
 
 // Runner runs one supervised process. It is declared here, by the consumer, and exported only so
@@ -103,6 +125,11 @@ type Config struct {
 	MaxParallel   int
 	VerifyGroups  int
 	VerifyGroupBy string // "dir", the default, or "source" to key verifier groups by the agent that raised the finding
+
+	// Spend is which binaries may actually be spawned. Nil means do not rewrite (tests). Production
+	// always sets it: grok-named agents run on the grok CLI only when Spend.Grok is true, otherwise
+	// they are rewritten onto cursor-agent, the same substitute a spent claude/codex meter uses.
+	Spend *Spend
 }
 
 // Pipeline runs one review. Run is a thin stage orchestrator: the stages own their own logic so no
@@ -252,6 +279,9 @@ func (p *Pipeline) emit(ev Event) {
 		ev.At = p.cfg.Clock.Now()
 	}
 	p.archive(ev)
+	if ev.Kind == EventSession {
+		return // durable accounting identity, never renderer activity or pressure on its lossy buffer
+	}
 	select {
 	case p.events <- ev:
 	default:

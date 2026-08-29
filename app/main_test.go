@@ -158,7 +158,7 @@ func TestRun_config(t *testing.T) {
 				assert.NotEmpty(t, a.Color, "agent %s reports no color, so the palette assignment is invisible", a.Name)
 			}
 		}
-		assert.Equal(t, []string{"claude-only", "codex-only", "comprehensive", "expert", "final", "focused", "grill-me", "triage"}, names)
+		assert.Equal(t, []string{"comprehensive", "expert", "final", "focused", "grill-me", "triage"}, names)
 
 		set, err := prompt.Load(prompt.LoadOpts{})
 		require.NoError(t, err)
@@ -1055,6 +1055,8 @@ func TestRunOpts_runnerFactory(t *testing.T) {
 		}{
 			{"claude", pipeline.RunnerSpec{Executor: "claude"}, &executor.Claude{}},
 			{"codex", pipeline.RunnerSpec{Executor: "codex"}, &executor.Codex{}},
+			{"cursor-agent", pipeline.RunnerSpec{Executor: "cursor-agent"}, &executor.Cursor{}},
+			{"grok", pipeline.RunnerSpec{Executor: "grok"}, &executor.Grok{}},
 			{"empty defaults to claude", pipeline.RunnerSpec{}, &executor.Claude{}},
 		}
 

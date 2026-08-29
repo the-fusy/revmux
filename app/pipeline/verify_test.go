@@ -448,6 +448,52 @@ func TestVerifier_run_verdicts(t *testing.T) {
 			"the shipped verify.md declares claude and opus, and the profile replaces both")
 	})
 
+	t.Run("a spent meter retries on cursor and rewrites the archived prompt", func(t *testing.T) {
+		h := newHarness(t)
+		var specs []RunnerSpec
+		var mu sync.Mutex
+		calls := 0
+		h.cfg.NewRunner = func(rs RunnerSpec) Runner {
+			mu.Lock()
+			specs = append(specs, rs)
+			mu.Unlock()
+			return &mocks.RunnerMock{RunFunc: func(context.Context, executor.Request, executor.EventSink) (executor.Result, error) {
+				mu.Lock()
+				calls++
+				n := calls
+				mu.Unlock()
+				if n == 1 {
+					return executor.Result{RateLimited: true, RateLimit: executor.RateLimitInfo{Status: "rejected"}}, nil
+				}
+				return executor.Result{StructuredOutput: json.RawMessage(`{"verdicts":[]}`)}, nil
+			}}
+		}
+
+		v := h.verifier(func(Event) {})
+		// one directory, so one group: two would race the attempt counter
+		rep := finding.Report{Findings: judgedReport().Findings[:2]}
+		_, err := v.run(context.Background(), rep)
+		require.NoError(t, err)
+		require.Len(t, specs, 2)
+		assert.Equal(t, "claude", specs[0].Executor)
+		assert.Equal(t, "cursor-agent", specs[1].Executor)
+		require.NotNil(t, v.stage)
+		assert.Equal(t, "cursor-agent", v.stage.Executor)
+		assert.Equal(t, "claude-opus-5-thinking", v.stage.Model)
+
+		var archived *syncBuffer
+		for _, name := range h.names() {
+			if strings.HasPrefix(name, "prompts/stages/verify-") {
+				archived = h.get(name)
+				break
+			}
+		}
+		require.NotNil(t, archived, "a verify group prompt must be on disk")
+		got := archived.String()
+		assert.Contains(t, got, executor.CursorOutputContract(finding.VerifySchema()))
+		assert.NotContains(t, got, executor.ClaudeNarrationContract(finding.VerifySchema()))
+	})
+
 	t.Run("nothing to verify dispatches nothing", func(t *testing.T) {
 		h := newHarness(t)
 		calls := 0

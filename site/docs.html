@@ -129,8 +129,9 @@
           <h1>revmux</h1>
           <p class="lede">
             A supervised multi-agent review, normally launched by your coding agent rather than typed by you.
-            revmux spawns <code>claude --print</code> and <code>codex exec</code> subprocesses, watches them,
-            and returns findings on stdout as JSON or markdown.
+            revmux spawns <code>claude --print</code>, <code>codex exec</code>,
+            <code>cursor-agent --print</code> and <code>grok</code> subprocesses,
+            watches them, and returns findings on stdout as JSON or markdown.
           </p>
         </div>
 
@@ -223,10 +224,11 @@ make install      <span class="c-dim"># and symlinks it to /usr/local/bin/revmux
         <ul>
           <li>
             <code>comprehensive</code>, <code>focused</code>, <code>final</code>, <code>grill-me</code>,
-            <code>triage</code>, <code>expert</code>: both, a claude roster plus codex
+            <code>triage</code>, <code>expert</code>: a claude roster plus a codex peer. A spent meter
+            retries that entry on <code>cursor-agent</code>. A profile that names <code>grok</code> runs
+            the grok CLI only with <code>--spend-grok</code>; otherwise those agents run on
+            <code>cursor-agent</code>
           </li>
-          <li><code>claude-only</code>: claude alone</li>
-          <li><code>codex-only</code>: codex alone</li>
         </ul>
         <p>
           <code>preflight.sh</code> in the shipped skill answers it for any profile and any invocation,
@@ -505,7 +507,7 @@ Reviewing the token exchange path after the provider swap.</pre>
 ├── prompts/
 │   ├── profiles/
 │   │   ├── comprehensive.md  roster front matter + shared preamble + severity bar
-│   │   ├── focused.md  final.md  claude-only.md  codex-only.md
+│   │   ├── focused.md  final.md
 │   │   └── grill-me.md  expert.md  triage.md
 │   ├── synthesis.md
 │   └── verify.md
@@ -560,7 +562,8 @@ agents:
         <h3>The model string</h3>
         <p>
           One <code>model</code> string selects the binary, the model and the effort together. The binary leads
-          and is mandatory, either <code>claude</code> or <code>codex</code>, so a value validates itself and
+          and is mandatory: <code>claude</code>, <code>codex</code>, <code>cursor-agent</code> or
+          <code>grok</code>. A value validates itself and
           revmux never has to guess which CLI runs <code>gpt-5.6-sol</code> from a catalog of model names that
           would go stale.
         </p>
@@ -579,8 +582,8 @@ codex:high               codex's default model at high effort</pre>
         <p>
           A stage resolves through three layers in turn: its <code>stages:</code> override, the stage file's own
           <code>model:</code>, then the profile's. The shipped <code>synthesis.md</code> and
-          <code>verify.md</code> name no runner of their own, so <code>codex-only</code> is one line and no
-          more. The optional <code>stages</code> block is for a deliberately mixed run, such as codex finders
+          <code>verify.md</code> name no runner of their own, so a profile whose <code>model:</code> is
+          <code>codex</code> is one line and no more. The optional <code>stages</code> block is for a deliberately mixed run, such as codex finders
           and a claude synthesis:
         </p>
         <pre class="code">stages:
@@ -616,16 +619,7 @@ codex:high               codex's default model at high effort</pre>
                 <td>final</td>
                 <td class="prose"><code>bugs+impl</code> plus the codex peer, nothing below major reported</td>
               </tr>
-              <tr>
-                <td>claude-only</td>
-                <td class="prose">the same four lens splits on claude, no codex peer, for a machine with no codex</td>
-              </tr>
-              <tr>
-                <td>codex-only</td>
-                <td class="prose">
-                  the same four lens splits on codex, and synthesis and verify with them, no claude anywhere
-                </td>
-              </tr>
+
               <tr>
                 <td>grill-me</td>
                 <td class="prose">
@@ -660,7 +654,7 @@ codex:high               codex's default model at high effort</pre>
         </p>
         <h3>Writing your own</h3>
         <p>
-          The eight are starting points, not the menu. A profile is a file under
+          The six are starting points, not the menu. A profile is a file under
           <code>prompts/profiles/</code> in any of the three layers, so dropping
           <code>.revmux/prompts/profiles/release.md</code> into a project makes
           <code>--profile release</code> work, with no registration step anywhere. The same is true of lenses:
@@ -705,8 +699,8 @@ receives, including what counts as critical, major and minor here.</pre>
           selects which binary runs it. There is no codex-specific prompt file: codex is an entry whose
           <code>model:</code> names it, composing <code>lenses/adversarial.md</code>, so the adversarial lens
           runs on claude by changing one word and <code>bugs</code> runs on codex the same way. Lens text stays
-          executor-agnostic, and the output-contract difference (claude has <code>--json-schema</code>, codex
-          does not) is injected by the executor.
+          executor-agnostic, and the output-contract difference (claude and grok have
+          <code>--json-schema</code>; codex and cursor-agent do not) is injected by the executor.
         </p>
         <div class="scroll-x">
           <table class="tbl">
@@ -742,7 +736,7 @@ receives, including what counts as critical, major and minor here.</pre>
           <strong>one</strong> agent carrying every named lens, not one agent per lens: a caller asking for two
           lenses is asking for a viewpoint, not for two corroborating votes. The synthesized entry inherits the
           profile's top-level <code>model</code> whole, binary included, so
-          <code>--profile codex-only --lenses bugs</code> runs on codex.
+          <code>--profile focused --lenses bugs</code> runs on claude.
         </p>
 
         <h2 id="composition">Prompt composition <a class="anchor" href="#composition">#</a></h2>
@@ -776,6 +770,10 @@ receives, including what counts as critical, major and minor here.</pre>
               <tr><td>--tasks-dir</td><td>./.revmux/tasks</td><td class="prose">root directory holding task directories</td></tr>
               <tr><td>--auto-exit</td><td>0s</td><td class="prose">close the terminal UI this long after the report arrives; 0 never closes it</td></tr>
               <tr><td>--profile</td><td>comprehensive</td><td class="prose">profile naming the roster to run</td></tr>
+              <tr><td>--spend-grok=true|false</td><td>false</td><td class="prose">run grok-named agents on the grok CLI; off rewrites them onto cursor-agent</td></tr>
+              <tr><td>--spend-claude=true|false</td><td>true</td><td class="prose">allow spawning claude</td></tr>
+              <tr><td>--spend-codex=true|false</td><td>true</td><td class="prose">allow spawning codex</td></tr>
+              <tr><td>--spend-cursor=true|false</td><td>true</td><td class="prose">allow spawning cursor-agent, including as the quota fallback</td></tr>
             </tbody>
           </table>
         </div>
@@ -891,7 +889,7 @@ receives, including what counts as critical, major and minor here.</pre>
 │   ├── 1-found.json          findings as the find stage left them
 │   ├── 2-synthesized.json
 │   └── 3-verified.json
-├── events.jsonl              revmux's own decisions: stalls, retries, degrades, stage transitions
+├── events.jsonl              decisions plus provider session ids per process attempt
 ├── agents/                   verbatim tees; own subdir so an agent named `events` cannot collide
 │   ├── bugs+impl.jsonl       claude stream-json
 │   ├── bugs+impl.retry.jsonl a retried agent keeps both attempts
@@ -903,6 +901,12 @@ receives, including what counts as critical, major and minor here.</pre>
           its content hash, because two rounds of one task can use different lens text. It also records
           requested-vs-actual model per agent: <code>claude --model</code> can be silently ignored, so a
           roster's model pin is a claim until it is read back.
+        </p>
+        <p>
+          Each provider process that exposes a session ID adds a <code>session</code> event with its agent,
+          exact executor and <code>session_id</code>. It is written once per attempt, including failed attempts
+          and retries, so a local accounting tool can join the round to Claude, Codex, Cursor or Grok's own
+          usage journal without revmux keeping a second token counter.
         </p>
         <p>
           It doubles as the marker claiming the round. It is created exclusively as the run starts, which is
@@ -1053,7 +1057,7 @@ receives, including what counts as critical, major and minor here.</pre>
                 "roster": [...], "stages": [...]}],
   "lenses": [{"name": "adversarial", "description": "..."}],
   "stages": [{"name": "synthesis", "description": "..."}],
-  "vocabulary": {"executors": ["claude", "codex"],
+  "vocabulary": {"executors": ["claude", "codex", "cursor-agent", "grok"],
                  "efforts": ["low", "medium", "high", "xhigh", "max"]},
   "paths": {
     "tasks_dir": "/abs/project/.revmux/tasks",

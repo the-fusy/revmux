@@ -162,7 +162,7 @@ Every artifact lands in the round directory — the `round_dir` `revmux new` rep
 │   ├── 1-found.json
 │   ├── 2-synthesized.json
 │   └── 3-verified.json       absent when the stage was skipped
-├── events.jsonl              stalls, retries, degrades, stage transitions
+├── events.jsonl              decisions plus provider session ids per process attempt
 ├── agents/
 │   ├── bugs+impl.jsonl       claude stream-json
 │   ├── bugs+impl.retry.jsonl second attempt when one was retried
@@ -180,6 +180,7 @@ the recovery path when a run's stdout was lost.
 |---|---|
 | why did this agent report nothing? | `agents/<name>.jsonl` |
 | did an agent stall or get retried? | `events.jsonl`, plus a `<name>.retry.jsonl` |
+| which provider sessions belong to this round? | `session` events in `events.jsonl`, one per process attempt |
 | did synthesis drop something real? | the `dropped` event in `events.jsonl` — it carries the findings themselves |
 | did verify reject wrongly? | `stages/2-synthesized.json` vs `3-verified.json` |
 | what was this agent asked? | `prompts/agents/<name>.md` |

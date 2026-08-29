@@ -551,7 +551,7 @@ EOF
 │   ├── stages/         synthesis.md, verify-app-pipeline.md, ...
 │   └── input-profile.md  the project profile's bytes, when the round inherited one
 ├── stages/             1-found.json, 2-synthesized.json, 3-verified.json
-├── events.jsonl        revmux's own decisions: stalls, retries, degrades, transitions
+├── events.jsonl        decisions plus provider session ids per process attempt
 ├── agents/             verbatim tees, one file per attempt
 └── report.md, findings.json</pre
               >
@@ -644,14 +644,7 @@ roster receives, including what counts as critical, major and minor here.</pre>
                   <td>final</td>
                   <td class="prose"><code>bugs+impl</code> plus the codex peer, nothing below major reported</td>
                 </tr>
-                <tr>
-                  <td>claude-only</td>
-                  <td class="prose">the same four lens splits on claude, for a machine with no codex</td>
-                </tr>
-                <tr>
-                  <td>codex-only</td>
-                  <td class="prose">the same splits on codex, both stages with them, no claude anywhere</td>
-                </tr>
+
                 <tr>
                   <td>grill-me</td>
                   <td class="prose">

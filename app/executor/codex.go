@@ -97,6 +97,7 @@ func (c *Codex) Run(ctx context.Context, req Request, sink EventSink) (Result, e
 	<-tailDone
 	res.RequestedModel = req.Model
 	res.ActualModel = errs.model
+	res.SessionID = errs.sessionIDValue
 	res.Tokens = errs.total()
 	if err != nil {
 		return res, err
@@ -108,7 +109,7 @@ func (c *Codex) Run(ctx context.Context, req Request, sink EventSink) (Result, e
 }
 
 func (c *Codex) args(req Request) []string {
-	argv := []string{"exec", "--sandbox", "read-only"}
+	argv := []string{"exec", "--sandbox", "danger-full-access"}
 	if req.Model != "" {
 		argv = append(argv, "-m", req.Model)
 	}
@@ -123,6 +124,13 @@ func (c *Codex) args(req Request) []string {
 // that stage's shape. Exported because Run appends it after the caller archived the composed prompt, and
 // an archived prompt missing it describes a run that did not happen.
 func CodexOutputContract(schema json.RawMessage) string {
+	return jsonOutputContract(schema)
+}
+
+// jsonOutputContract is the shared substitute for claude's --json-schema, appended by every executor
+// that has no schema flag of its own — codex and cursor-agent. One text, two names: each stays
+// exported under its own binary so an archived prompt records which contract its run dispatched.
+func jsonOutputContract(schema json.RawMessage) string {
 	if len(schema) == 0 {
 		return ""
 	}
@@ -194,7 +202,11 @@ func (c *Codex) classify(res Result, diag string, sink EventSink) (Result, error
 	return res, nil
 }
 
-func (c *Codex) tail(raw string) string {
+func (c *Codex) tail(raw string) string { return OutputTail(raw) }
+
+// OutputTail is the last patternTailBytes of a process tee. Limit-phrase matching
+// looks only here: a long stream can quote the same phrases in a file it read.
+func OutputTail(raw string) string {
 	if len(raw) <= patternTailBytes {
 		return raw
 	}
@@ -214,15 +226,16 @@ func (c *Codex) match(text string, patterns []string) string {
 // codexStderr filters one run's stderr down to what is worth keeping. It is per-run state and therefore
 // never a field on Codex, which serves the whole roster concurrently from one instance.
 type codexStderr struct {
-	emit       func(Event)
-	seen       map[string]bool
-	model      string
-	diag       string
-	tokens     int
-	wantTokens bool
-	atEnd      bool          // the accepted count is still the last thing stderr printed
-	session    chan<- string // receives the session id once the banner surfaces it, buffered, sent once
-	sentID     bool
+	emit           func(Event)
+	seen           map[string]bool
+	model          string
+	diag           string
+	sessionIDValue string
+	tokens         int
+	wantTokens     bool
+	atEnd          bool          // the accepted count is still the last thing stderr printed
+	session        chan<- string // receives the session id once the banner surfaces it, buffered, sent once
+	sentID         bool
 }
 
 func newCodexStderr(emit func(Event), session chan<- string) *codexStderr {
@@ -241,13 +254,16 @@ func (s *codexStderr) line(l string) {
 	}
 	// the id that names the rollout file, which is where codex's actual activity goes. Sent once,
 	// non-blocking, so a missing reader cannot stall the stderr drain and wedge the process.
-	if !s.sentID && s.session != nil {
+	if !s.sentID {
 		if id := s.sessionID(l); id != "" {
 			s.sentID = true
-			select {
-			case s.session <- id:
-			default:
+			if s.session != nil {
+				select {
+				case s.session <- id:
+				default:
+				}
 			}
+			s.sessionIDValue = id
 		}
 	}
 

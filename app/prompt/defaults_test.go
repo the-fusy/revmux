@@ -65,8 +65,8 @@ func TestDefaults_EveryProfileResolvesItsRoster(t *testing.T) {
 	set, err := Load(LoadOpts{})
 	require.NoError(t, err)
 	known := set.LensNames()
-	require.Len(t, set.ProfileNames(), 8,
-		"the shipped set is comprehensive, focused, final, claude-only, codex-only, grill-me, triage and expert")
+	require.Len(t, set.ProfileNames(), 6,
+		"the shipped set is comprehensive, focused, final, grill-me, triage and expert")
 
 	for _, name := range set.ProfileNames() {
 		p, err := set.Profile(name)
@@ -111,12 +111,16 @@ func TestDefaults_EveryProfileResolvesEveryStage(t *testing.T) {
 	}
 }
 
-// codex-only is the profile that would silently be two thirds claude if a profile could not name its
-// stages, so it pins the whole run on one binary rather than only the find stage
-func TestDefaults_CodexOnlyRunsEveryStageOnCodex(t *testing.T) {
-	set, err := Load(LoadOpts{})
+// a profile that only names its model pins the whole run on that binary rather than only the find
+// stage — the shipped stage files name none, so or() has to carry the profile through
+func TestProfile_NamedModelCoversRosterAndStages(t *testing.T) {
+	project := writeTree(t, t.TempDir(), map[string]string{
+		"prompts/profiles/onebinary.md": "---\nmodel: codex/gpt-5.6-sol:high\n" +
+			"agents:\n  - {name: a, lenses: [bugs]}\n---\nbody\n",
+	})
+	set, err := Load(LoadOpts{ProjectDir: project})
 	require.NoError(t, err)
-	p, err := set.Profile("codex-only")
+	p, err := set.Profile("onebinary")
 	require.NoError(t, err)
 
 	specs, err := p.Roster(nil, set.LensNames())
@@ -134,21 +138,12 @@ func TestDefaults_CodexOnlyRunsEveryStageOnCodex(t *testing.T) {
 	}
 
 	// --lenses replaces the roster with one agent inheriting the profile's model, so an executor
-	// hardcoded to claude here would ask claude for a codex model and would need the binary this
-	// profile exists to do without
+	// hardcoded to claude here would ask claude for a codex model
 	override, err := p.Roster([]string{"bugs"}, set.LensNames())
 	require.NoError(t, err)
 	require.Len(t, override, 1)
 	assert.Equal(t, "codex", override[0].Executor)
 	assert.Equal(t, "gpt-5.6-sol", override[0].Model)
-
-	claude, err := set.Profile("claude-only")
-	require.NoError(t, err)
-	for _, stage := range []string{"synthesis", "verify"} {
-		st, stErr := claude.Stage(set, stage)
-		require.NoError(t, stErr)
-		assert.Equal(t, "claude", st.Executor, "%s: the mirror profile names no override and keeps the file's own", stage)
-	}
 }
 
 func TestDefaults_ComprehensiveRoster(t *testing.T) {
@@ -366,7 +361,7 @@ func TestDefaults_LensesStayExecutorAgnostic(t *testing.T) {
 		body, err := set.lens(l.Name)
 		require.NoError(t, err)
 		lower := strings.ToLower(body)
-		for _, banned := range []string{"json", "schema", "claude", "codex"} {
+		for _, banned := range []string{"json", "schema", "claude", "codex", "cursor-agent", "grok"} {
 			assert.NotContains(t, lower, banned,
 				"lens %s must not carry an output contract or name a binary", l.Name)
 		}

@@ -18,8 +18,14 @@ import (
 )
 
 // executorCodex names the one roster executor whose output is prose rather than stream-json, so its
-// verbatim tee gets a different extension.
-const executorCodex = "codex"
+// verbatim tee gets a different extension. executorCursor is the third binary; archivedPrompt
+// needs it so a cursor prompt is not stored as Claude's narration contract. executorGrok shares
+// Claude's narration contract and json-schema, but is its own binary.
+const (
+	executorCodex  = "codex"
+	executorCursor = "cursor-agent"
+	executorGrok   = "grok"
+)
 
 // maxAttempts is one launch plus one retry. A second failure degrades the source and the run
 // continues, because one flaky agent must not waste every other agent's work.
@@ -95,6 +101,13 @@ func (f *finder) runAgent(ctx context.Context, spec prompt.AgentSpec, index int)
 	if err != nil {
 		return f.degrade(res, err)
 	}
+	if next, ok := applySpendSpec(f.cfg.Spend, spec); ok {
+		spec = next
+		res.stat.Executor, res.stat.RequestedModel, res.stat.Effort = spec.Executor, spec.Model, spec.Effort
+	}
+	if f.cfg.Spend != nil && !f.cfg.Spend.allowed(spec.Executor) {
+		return f.degrade(res, fmt.Errorf("executor %s is disabled", spec.Executor))
+	}
 	// archived post-substitution, exactly the bytes the process receives — the codex output contract
 	// included: a reflection agent cannot judge a lens it cannot read, and a paraphrase is worse than
 	// no data
@@ -113,7 +126,10 @@ func (f *finder) runAgent(ctx context.Context, spec prompt.AgentSpec, index int)
 	var fault error
 	for opts.n = 0; opts.n < maxAttempts; opts.n++ {
 		result, runErr := f.attempt(ctx, opts)
+		emitSession(f.emit, spec.Name, opts.spec.Executor, result)
 		res.stat.Tokens += result.Tokens
+		res.stat.Executor = opts.spec.Executor
+		res.stat.RequestedModel = opts.spec.Model
 		if result.ActualModel != "" {
 			res.stat.ActualModel = result.ActualModel
 		}
@@ -121,6 +137,12 @@ func (f *finder) runAgent(ctx context.Context, spec prompt.AgentSpec, index int)
 		if fault = f.fault(spec, result, runErr); fault != nil {
 			if ctx.Err() != nil || opts.n == maxAttempts-1 {
 				break
+			}
+			if next, ok := applyQuotaFallbackSpec(f.cfg.Spend, opts.spec, result, fault); ok {
+				opts.spec = next
+				f.save(f.promptName(spec), []byte(archivedPrompt(next.Executor, text, finding.FinderSchema())))
+				f.emit(Event{Kind: EventAgentRetried, Agent: spec.Name, Text: "quota exhausted; retrying on cursor"})
+				continue
 			}
 			f.emit(Event{Kind: EventAgentRetried, Agent: spec.Name, Text: fault.Error()})
 			continue

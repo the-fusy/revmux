@@ -24,9 +24,9 @@ const (
 	ansiDefaultFg = "\x1b[39m"
 )
 
-// the two accepted vocabularies, checked by validate and reported verbatim by `revmux config`.
+// the accepted vocabularies, checked by validate and reported verbatim by `revmux config`.
 var (
-	executors = []string{executorClaude, "codex"}
+	executors = []string{executorClaude, "codex", "cursor-agent", "grok"}
 	efforts   = []string{"low", "medium", "high", "xhigh", "max"}
 )
 
@@ -180,7 +180,8 @@ func (p *Profile) Roster(lensOverride []string, known map[string]struct{}) ([]Ag
 
 // Stage resolves the stage prompt this profile runs: the shared body from the set, under the runner three
 // layers produce. Highest first: the profile's `stages:` entry, the stage file's own `model:`, then the
-// profile's `model:`. The shipped stage files name none, which is what makes `codex-only` one line.
+// profile's `model:`. The shipped stage files name none, which is what makes a profile that only
+// names its model one line.
 func (p *Profile) Stage(set *Set, name string) (*Stage, error) {
 	st, err := set.Stage(name)
 	if err != nil {
@@ -191,6 +192,9 @@ func (p *Profile) Stage(set *Set, name string) (*Stage, error) {
 	res := st.runner.or(p.runner)
 	if over, ok := p.stages[name]; ok {
 		res = over.or(st.runner).or(p.runner)
+	}
+	if err := res.check(); err != nil {
+		return nil, fmt.Errorf("profile %s: stage %s: %w", p.Name, name, err)
 	}
 
 	out := *st
@@ -316,6 +320,9 @@ func parseProfile(name string, meta, body []byte) (*Profile, error) {
 	if base.Executor == "" {
 		base.Executor = executorClaude
 	}
+	if err := base.check(); err != nil {
+		return nil, fmt.Errorf("profile %s: %w", name, err)
+	}
 
 	p := &Profile{doc: doc{Description: fm.Description, Body: text}, Name: name, runner: base}
 	p.agents = make([]AgentSpec, 0, len(fm.Agents))
@@ -325,6 +332,9 @@ func parseProfile(name string, meta, body []byte) (*Profile, error) {
 			return nil, fmt.Errorf("profile %s: agent %s: %w", name, a.Name, agentErr)
 		}
 		run = run.or(base)
+		if err := run.check(); err != nil {
+			return nil, fmt.Errorf("profile %s: agent %s: %w", name, a.Name, err)
+		}
 		p.agents = append(p.agents, AgentSpec{Name: a.Name, Lenses: a.Lenses, ColorName: a.Color,
 			Executor: run.Executor, Model: run.Model, Effort: run.Effort})
 	}

@@ -1,7 +1,9 @@
 package executor
 
 import (
+	"context"
 	"encoding/json"
+	"io"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -20,6 +22,7 @@ const schemaToolName = "StructuredOutput"
 type streamEvent struct {
 	Type             string                `json:"type"`
 	Subtype          string                `json:"subtype"`
+	SessionID        string                `json:"session_id"`
 	StructuredOutput json.RawMessage       `json:"structured_output"`
 	ModelUsage       map[string]modelUsage `json:"modelUsage"`
 	Usage            *tokenUsage           `json:"usage"`
@@ -203,4 +206,65 @@ func (e streamEvent) progress() string {
 		return b.Name
 	}
 	return ""
+}
+
+// parseMessagesStream consumes claude stream-json and grok streaming-messages-json, which share the
+// assistant / result / rate_limit_event surface. A line that fails to decode is skipped: a truncated
+// stream must degrade to a partial Result rather than fail the run. stream_event deltas are ignored
+// on purpose — they exist for the idle watchdog's byte tick, not for the log.
+func parseMessagesStream(p *proc, ctx context.Context, r io.Reader, sink EventSink) Result {
+	res := Result{}
+	_ = p.readLines(ctx, r, func(line string) {
+		ev, ok := decodeStreamEvent(line)
+		if !ok {
+			return
+		}
+		if ev.SessionID != "" {
+			res.SessionID = ev.SessionID
+		}
+		switch ev.Type {
+		case "assistant":
+			// two separate questions about one turn: what the model said, and whether it is alive.
+			// prose is worth a scrollback line, a tool name is worth only a status cell, and a turn
+			// that does both emits both.
+			if text := ev.activity(); text != "" {
+				p.emit(sink, Event{Kind: EventActivity, Text: text})
+			}
+			if note := ev.progress(); note != "" {
+				p.emit(sink, Event{Kind: EventProgress, Text: note})
+			}
+		case "rate_limit_event":
+			if ev.RateLimitInfo == nil {
+				return
+			}
+			res.RateLimit = *ev.RateLimitInfo
+			res.RateLimited = ev.RateLimitInfo.Status == rateLimitRejected
+			if res.RateLimited {
+				p.emit(sink, Event{Kind: EventRateLimit, Text: ev.RateLimitInfo.Status})
+			}
+		case "result":
+			// a refused tool call is reported, never swallowed: the agent works around it silently
+			// and the review narrows without anything else saying so
+			if note := ev.denials(); note != "" {
+				p.emit(sink, Event{Kind: EventInfo, Text: note})
+			}
+			res.StructuredOutput = ev.StructuredOutput
+			res.ActualModel = ev.actualModel()
+			res.Tokens = ev.tokens()
+			res.TTFTMs = ev.TTFTMs
+		}
+	})
+	return res
+}
+
+func decodeStreamEvent(line string) (streamEvent, bool) {
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return streamEvent{}, false
+	}
+	var ev streamEvent
+	if err := json.Unmarshal([]byte(line), &ev); err != nil {
+		return streamEvent{}, false
+	}
+	return ev, ev.Type != ""
 }

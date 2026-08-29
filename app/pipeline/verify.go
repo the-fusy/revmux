@@ -191,11 +191,39 @@ func (v *verifier) runOne(ctx context.Context, g verifyGroup) ([]finding.Finding
 	v.emit(Event{Kind: EventAgentStarted, Agent: agent, Text: strings.Join(g.dirs, ", ")})
 
 	spec := RunnerSpec{Executor: v.stage.Executor, Model: v.stage.Model, Effort: v.stage.Effort}
-	res, err := v.cfg.NewRunner(spec).Run(ctx, executor.Request{
-		Prompt: g.text, Model: v.stage.Model, Effort: v.stage.Effort, Schema: finding.VerifySchema(),
-	}, newSink(agent, v.emit, nil))
-	// counted before the error is judged: the run total is what was billed, not what was useful
-	v.tokens.Add(int64(res.Tokens))
+	if next, ok := applySpend(v.cfg.Spend, spec); ok {
+		spec = next
+		recordDelivered(v.stage, next)
+		v.save(v.promptName(g), []byte(archivedPrompt(next.Executor, g.text, finding.VerifySchema())))
+	}
+	if v.cfg.Spend != nil && !v.cfg.Spend.allowed(spec.Executor) {
+		return nil, fmt.Errorf("executor %s is disabled", spec.Executor)
+	}
+	req := executor.Request{
+		Prompt: g.text, Model: spec.Model, Effort: spec.Effort, Schema: finding.VerifySchema(),
+	}
+	var res executor.Result
+	var err error
+	for n := range maxAttempts {
+		res, err = v.cfg.NewRunner(spec).Run(ctx, req, newSink(agent, v.emit, nil))
+		emitSession(v.emit, agent, spec.Executor, res)
+		v.tokens.Add(int64(res.Tokens))
+		if err == nil && len(res.StructuredOutput) > 0 {
+			break
+		}
+		if n == maxAttempts-1 {
+			break
+		}
+		if next, ok := applyQuotaFallback(v.cfg.Spend, spec, res, err); ok {
+			spec = next
+			req.Model, req.Effort = next.Model, next.Effort
+			recordDelivered(v.stage, next)
+			v.save(v.promptName(g), []byte(archivedPrompt(next.Executor, g.text, finding.VerifySchema())))
+			v.emit(Event{Kind: EventAgentRetried, Agent: agent, Text: "quota exhausted; retrying on cursor"})
+			continue
+		}
+		break
+	}
 	if err != nil {
 		return nil, fmt.Errorf("verify %s: %w", g.name, err)
 	}

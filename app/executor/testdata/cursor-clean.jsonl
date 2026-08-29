@@ -1,0 +1,8 @@
+{"type":"system","subtype":"init","cwd":"/tmp/review","session_id":"s1","model":"Cursor Grok 4.6 High","permissionMode":"default"}
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"review this"}]},"session_id":"s1"}
+{"type":"thinking","subtype":"delta","text":"reading the diff","session_id":"s1"}
+{"type":"thinking","subtype":"completed","session_id":"s1"}
+{"type":"tool_call","subtype":"started","call_id":"c1","tool_call":{"readToolCall":{"args":{"path":"/repo/app/foo.go"}}}}
+{"type":"tool_call","subtype":"completed","call_id":"c1","tool_call":{"readToolCall":{"args":{"path":"/repo/app/foo.go"},"result":{"success":{"content":"package foo\n"}}}}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"{\"findings\":[{\"file\":\"app/foo.go\",\"line\":1,\"severity\":\"minor\",\"confidence\":80,\"title\":\"nil deref\",\"body\":\"x is unchecked\",\"fix\":\"return the error\",\"lenses\":[\"bugs\"]}]}"}]},"session_id":"s1"}
+{"type":"result","subtype":"success","duration_ms":1200,"is_error":false,"result":"{\"findings\":[{\"file\":\"app/foo.go\",\"line\":1,\"severity\":\"minor\",\"confidence\":80,\"title\":\"nil deref\",\"body\":\"x is unchecked\",\"fix\":\"return the error\",\"lenses\":[\"bugs\"]}]}","session_id":"s1","usage":{"inputTokens":12000,"outputTokens":400,"cacheReadTokens":1000,"cacheWriteTokens":0}}

@@ -91,8 +91,17 @@ func (s *synthesizer) all(sources []sourceResult) []finding.Finding {
 // an unmerged report nobody asked for is worse than a loud error.
 func (s *synthesizer) dispatch(ctx context.Context, stage *prompt.Stage, text string) (executor.Result, error) {
 	spec := RunnerSpec{Executor: stage.Executor, Model: stage.Model, Effort: stage.Effort}
+	if next, ok := applySpend(s.cfg.Spend, spec); ok {
+		spec = next
+		recordDelivered(s.stage, next)
+		s.save(path.Join(task.StagePromptDir, stageSynthesis+".md"),
+			[]byte(archivedPrompt(next.Executor, text, finding.SynthesisSchema())))
+	}
+	if s.cfg.Spend != nil && !s.cfg.Spend.allowed(spec.Executor) {
+		return executor.Result{}, fmt.Errorf("executor %s is disabled", spec.Executor)
+	}
 	req := executor.Request{
-		Prompt: text, Model: stage.Model, Effort: stage.Effort, Schema: finding.SynthesisSchema(),
+		Prompt: text, Model: spec.Model, Effort: spec.Effort, Schema: finding.SynthesisSchema(),
 	}
 
 	// a failed attempt still spent what it spent, so its tokens ride on the attempt that delivers —
@@ -101,6 +110,7 @@ func (s *synthesizer) dispatch(ctx context.Context, stage *prompt.Stage, text st
 	var tokens int
 	for n := range maxAttempts {
 		res, err := s.cfg.NewRunner(spec).Run(ctx, req, newSink(stageSynthesis, s.emit, nil))
+		emitSession(s.emit, stageSynthesis, spec.Executor, res)
 		tokens += res.Tokens
 		if fault = s.fault(res, err); fault == nil {
 			res.Tokens = tokens
@@ -108,6 +118,15 @@ func (s *synthesizer) dispatch(ctx context.Context, stage *prompt.Stage, text st
 		}
 		if ctx.Err() != nil || n == maxAttempts-1 {
 			break
+		}
+		if next, ok := applyQuotaFallback(s.cfg.Spend, spec, res, fault); ok {
+			spec = next
+			req.Model, req.Effort = next.Model, next.Effort
+			recordDelivered(s.stage, next)
+			s.save(path.Join(task.StagePromptDir, stageSynthesis+".md"),
+				[]byte(archivedPrompt(next.Executor, text, finding.SynthesisSchema())))
+			s.emit(Event{Kind: EventAgentRetried, Agent: stageSynthesis, Text: "quota exhausted; retrying on cursor"})
+			continue
 		}
 		s.emit(Event{Kind: EventAgentRetried, Agent: stageSynthesis, Text: fault.Error()})
 	}

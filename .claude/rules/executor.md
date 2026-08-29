@@ -61,7 +61,6 @@ claude --print --output-format stream-json --verbose
        --permission-mode auto
        --disallowedTools "Edit,Write"
        --disable-slash-commands
-       --no-session-persistence
        --include-partial-messages
        --json-schema <findings schema>
        < prompt
@@ -88,7 +87,15 @@ claude --print --output-format stream-json --verbose
 - `--disable-slash-commands` prevents a lens agent invoking a skill that spawns its own subagent,
   which would put an agent inside the agent.
   The call site cannot prevent that any other way — it is a property of the invoked skill, not of the caller.
-- `--no-session-persistence` avoids leaving one saved transcript per lens per run.
+- **Do not pass `--no-session-persistence`.**
+  `--print` writes a transcript under `~/.claude/projects/<cwd>/` unless that flag is set, and that is
+  the store `ccusage` and `/resume` both read.
+  A review launched from grok, Claude Code, Cursor or Codex has to land in the same project history as
+  an interactive session in that directory, or the quota spent on finders is invisible next to the
+  session that launched them.
+  One file per lens per run is the cost; the alternative is a review that never appears in usage.
+  Codex `exec` and `cursor-agent --print` already persist by default and have no equivalent opt-out
+  on the flags we pass, so this is the claude-only hole.
 - **`--include-partial-messages` is armour for the idle watchdog, not something revmux decodes.**
   Without it the `StructuredOutput` tool call reaches stdout as a single line written only once it is
   complete, so a large answer means minutes with no byte on either pipe while the agent is working —
@@ -199,10 +206,10 @@ failing process to have something to order against. The `fail` helper mode exist
 
 ### Shared base, thin executors
 
-`Claude` and `Codex` both need the same run loop, idle watchdog, process-group teardown and line reader.
-Duplicating that gives two near-identical `Run` bodies, which `dupl` will fail in lint.
+`Claude`, `Grok`, `Codex` and `Cursor` all need the same run loop, idle watchdog, process-group teardown
+and line reader. Duplicating that gives near-identical `Run` bodies, which `dupl` will fail in lint.
 
-Put the shared machinery on an unexported `proc` struct that both embed.
+Put the shared machinery on an unexported `proc` struct that they embed.
 Each executor supplies only its own `args()` and its own output parsing.
 Model and effort belong on the **per-run request**, not on construction-time options —
 a single executor instance has to serve roster entries with different models.
@@ -217,6 +224,35 @@ codex prose. Re-serializing parsed events is not the same artifact: a reflection
 of what the model emitted is worse off than one with no data, because it cannot tell the difference.
 
 Tee before parse, not after — a stream that fails to parse is exactly the one worth having on disk.
+
+### Verified `grok` CLI behavior
+
+Measured directly against the real CLI. Do not re-derive.
+
+- **Headless is `--prompt-file`, never stdin and never `-p`.**
+  grok does not read piped stdin into the prompt. `-p` puts the text on argv, and a composed lens
+  blows past the Windows command-line cap. Write the prompt (narration contract included) to a temp
+  file, pass `--prompt-file`, and empty `Request.Prompt` so it does not also ride the pipe.
+- **`--json-schema` works with `--output-format streaming-messages-json`.**
+  The "implies `--output-format json`" note in grok's own help is not a hard override: the stream
+  still opens with `system`/`init`, `stream_event` deltas, an `assistant` frame, and a terminal
+  `result` carrying pre-parsed `structured_output`. Read that object. The same `parseMessagesStream`
+  as Claude consumes it; `stream_event` lines are ignored on purpose — they exist for the idle
+  watchdog's byte tick.
+- **`--json-schema` takes the schema JSON itself as the argument value**, same as claude.
+- **`--include-partial-messages` is the idle watchdog**, same reason as claude.
+- **`--always-approve` is the measured headless permission mode.**
+  `--permission-mode auto` exists but collapses to `default` on the init line; default in headless
+  would hang on a confirmation. `--disallowed-tools write,search_replace` removes the edit tools.
+  Those are grok's names, not `Edit,Write`. Do not grow this into a shell denylist.
+- **`--no-leader` so a review launched from an interactive grok session does not attach to that
+  session's leader.** `--no-subagents` is the same role as claude's `--disable-slash-commands`.
+- **`--model` can be silently ignored**, same as claude: a run asked for `grok-4.6` reported
+  `grok-4.6-build` in `modelUsage`. Read that back.
+- **Grok as a roster binary is opt-in.** `spend-grok` defaults to false, so a profile that names
+  `grok` is rewritten onto `cursor-agent` (`cursor-grok-4.6`) unless the user turned the knob on.
+  Grok quota is spent only when the profile names grok *and* the knob is on. A spent grok meter
+  retries on cursor the same way claude and codex do.
 
 ### Codex differences
 
@@ -313,7 +349,7 @@ Codex is a peer executor, not a special case in the pipeline — but the executo
   the echoed prompt precedes everything codex reports itself, so a first-match diagnostic names a line the
   prompt quoted — a lens body, a finding describing an error — as the failure,
   and hands `classify` a line that can carry a limit pattern the run never hit.
-- `--sandbox read-only` always. revmux never lets an agent write.
+- `--sandbox danger-full-access` always. Reviews fetch facts; a read-only jail blocks that.
 
 ### Error and limit patterns
 

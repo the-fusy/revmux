@@ -1,0 +1,2 @@
+{"type":"system","subtype":"init","cwd":"/tmp/review","session_id":"s1","model":"Cursor Grok 4.6 High","permissionMode":"default"}
+{"type":"result","subtype":"success","duration_ms":1200,"is_error":false,"result":"here is the answer {\"findings\":[{\"file\":\"app/foo.go\",\"line\":1,\"severity\":\"minor\",\"confidence\":80,\"title\":\"nil deref\",\"body\":\"x is unchecked\",\"fix\":\"return the error\",\"lenses\":[\"bugs\"]}]}","session_id":"s1","usage":{"inputTokens":100,"outputTokens":20,"cacheReadTokens":0,"cacheWriteTokens":0}}
